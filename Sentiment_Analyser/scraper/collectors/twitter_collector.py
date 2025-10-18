@@ -1,9 +1,8 @@
-
-'''
+"""
 Twitter data collector using twikit.
 
 Provides functionality to scrape tweets using cookie-based authentication.
-'''
+"""
 
 import logging
 import asyncio
@@ -12,7 +11,7 @@ from datetime import datetime
 from typing import AsyncGenerator, List, Optional
 
 from twikit import Client
-from twikit.errors import TwikitError
+from twikit.errors import TwitterException
 
 from Sentiment_Analyser.config import get_settings
 
@@ -22,7 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Tweet:
     """Data class representing a scraped tweet. Kept consistent for downstream compatibility."""
-    
+
     id: str
     content: str
     user: str
@@ -35,11 +34,11 @@ class Tweet:
     hashtags: List[str]
     mentions: List[str]
     language: Optional[str] = None
-    
+
     def to_dict(self) -> dict:
         """Convert tweet to dictionary."""
         data = asdict(self)
-        data['date'] = self.date.isoformat()
+        data["date"] = self.date.isoformat()
         return data
 
 
@@ -48,11 +47,11 @@ class TwitterCollector:
     Collector for Twitter data using twikit.
     Handles authentication and provides async methods for data collection.
     """
-    
+
     def __init__(self):
         """Initialize Twitter collector with twikit client."""
         self.settings = get_settings()
-        self.client = Client('en-US')
+        self.client = Client("en-US")
         self._logged_in = False
 
     async def _login_if_needed(self):
@@ -64,31 +63,32 @@ class TwitterCollector:
         ct0 = self.settings.TWITTER_CT0
 
         if not auth_token or not ct0:
-            raise ValueError("Twitter authentication cookies (TWITTER_AUTH_TOKEN, TWITTER_CT0) are not set in settings.")
+            raise ValueError(
+                "Twitter authentication cookies (TWITTER_AUTH_TOKEN, TWITTER_CT0) are not set in settings."
+            )
 
         try:
             logger.info("Attempting to log in to Twitter using cookies...")
-            await self.client.login(cookies={
-                'auth_token': auth_token,
-                'ct0': ct0
-            })
+            await self.client.login(cookies={"auth_token": auth_token, "ct0": ct0})
             self._logged_in = True
             logger.info("Successfully logged in.")
-        except TwikitError as e:
+        except TwitterException as e:
             logger.error(f"Failed to log in with cookies: {e}")
             raise
 
     def _parse_tweet(self, twikit_tweet) -> Tweet:
         """
         Parse a twikit tweet object to our internal Tweet dataclass.
-        
+
         Args:
             twikit_tweet: Raw tweet object from twikit.
-            
+
         Returns:
             Parsed Tweet object.
         """
-        user_mentions = [mention['screen_name'] for mention in twikit_tweet.user_mentions]
+        user_mentions = [
+            mention["screen_name"] for mention in twikit_tweet.user_mentions
+        ]
         # The URL can be constructed from the username and tweet id
         tweet_url = f"https://twitter.com/{twikit_tweet.user.screen_name}/status/{twikit_tweet.id}"
 
@@ -104,54 +104,54 @@ class TwitterCollector:
             url=tweet_url,
             hashtags=twikit_tweet.hashtags,
             mentions=user_mentions,
-            language=twikit_tweet.lang
+            language=twikit_tweet.lang,
         )
 
     async def search(
         self,
         query: str,
         limit: int = 100,
-        since: Optional[str] = None, # Note: twikit search doesn't directly support date ranges
-        until: Optional[str] = None
+        since: Optional[
+            str
+        ] = None,  # Note: twikit search doesn't directly support date ranges
+        until: Optional[str] = None,
     ) -> AsyncGenerator[Tweet, None]:
         """
         Search for tweets matching the query.
-        
+
         Args:
             query: Search query.
             limit: Maximum number of tweets to collect.
-            
+
         Yields:
             Tweet objects.
         """
         await self._login_if_needed()
         logger.info(f"Starting tweet search with query: '{query}'")
-        
+
         count = 0
         try:
-            async for tweet_obj in self.client.search_tweet(query, 'Latest'):
+            async for tweet_obj in self.client.search_tweet(query, "Latest"):
                 if count >= limit:
                     break
                 yield self._parse_tweet(tweet_obj)
                 count += 1
-        except TwikitError as e:
+        except TwitterException as e:
             logger.error(f"An error occurred during tweet search: {e}")
             raise
 
         logger.info(f"Search completed. Total tweets collected: {count}")
 
     async def get_user_tweets(
-        self,
-        username: str,
-        limit: int = 100
+        self, username: str, limit: int = 100
     ) -> AsyncGenerator[Tweet, None]:
         """
         Get tweets from a specific user.
-        
+
         Args:
             username: Twitter username (without @).
             limit: Maximum number of tweets to collect.
-            
+
         Yields:
             Tweet objects.
         """
@@ -165,7 +165,7 @@ class TwitterCollector:
                 raise ValueError(f"User with username '{username}' not found.")
 
             count = 0
-            async for tweet_obj in self.client.get_user_tweets(user.id, 'Tweets'):
+            async for tweet_obj in self.client.get_user_tweets(user.id, "Tweets"):
                 if count >= limit:
                     break
                 yield self._parse_tweet(tweet_obj)

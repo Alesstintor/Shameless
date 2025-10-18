@@ -19,7 +19,7 @@ settings = get_settings()
 
 # Create a single, shared instance of the TwitterCollector
 # This is more efficient than creating a new one for each request
-collector = TwitterCollector(rate_limit=settings.SCRAPER_RATE_LIMIT)
+collector = TwitterCollector()
 
 # Initialize FastAPI app
 app = FastAPI(
