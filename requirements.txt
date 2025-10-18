@@ -10,7 +10,7 @@ numpy==1.26.2
 tweepy
 atproto
 
-# Machine Learning - Inference only
+# Machine Learning - Inference only (load Kaggle models locally)
 transformers==4.36.2
 torch==2.1.2
 tokenizers==0.15.0

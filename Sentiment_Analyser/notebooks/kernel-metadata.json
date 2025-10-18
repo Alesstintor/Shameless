@@ -4,5 +4,9 @@
   "code_file": "./sentiment_analysis.ipynb",
   "language": "python",
   "kernel_type": "notebook",
-  "is_private": true
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": ["kazanova/sentiment140"],
+  "kernel_sources": []
 }

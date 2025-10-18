@@ -204,30 +204,3 @@ class SentimentAnalyzer:
             return 'negative'
         else:
             return 'neutral'
-    
-    def get_detailed_scores(self, text: str) -> Dict[str, float]:
-        """
-        Get detailed sentiment scores (if model supports it).
-        
-        Args:
-            text: Input text
-            
-        Returns:
-            Dictionary with scores for each sentiment class
-        """
-        # This is a simplified version - extend for multi-class models
-        result = self.analyze(text)
-        
-        if result['label'] == 'ERROR':
-            return {'error': 1.0}
-        
-        sentiment = result['sentiment']
-        score = result['score']
-        
-        # For binary classification, calculate complement
-        scores = {
-            sentiment: score,
-            'positive' if sentiment == 'negative' else 'negative': 1 - score
-        }
-        
-        return scores

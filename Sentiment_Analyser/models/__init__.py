@@ -1,7 +1,7 @@
 """
 Machine Learning models for sentiment analysis.
 
-Provides preprocessing, training, inference, and evaluation utilities.
+Provides preprocessing, inference, and model loading utilities.
 Supports both HuggingFace models and Kaggle-trained models.
 """
 

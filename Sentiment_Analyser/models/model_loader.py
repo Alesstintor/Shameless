@@ -1,7 +1,7 @@
 """
-Model loader for Kaggle-trained sentiment models.
+Model loading utilities for Kaggle-trained models.
 
-Handles downloading, caching, and loading models trained in Kaggle.
+Handles loading models trained in Kaggle for local inference.
 """
 
 import json
@@ -22,10 +22,7 @@ class KaggleModelLoader:
     """
     Load sentiment models trained in Kaggle.
     
-    Supports:
-    - Loading models from local cache
-    - Auto-download from Kaggle Dataset (future)
-    - Version management
+    Supports loading models from local cache for inference.
     """
     
     def __init__(self, models_dir: str = "data/models"):
@@ -37,6 +34,7 @@ class KaggleModelLoader:
         """
         self.models_dir = Path(models_dir)
         self.models_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Model loader initialized: {self.models_dir}")
         
     def load_model(
         self,
@@ -142,56 +140,6 @@ class KaggleModelLoader:
                 info['metrics'] = json.load(f)
         
         return info
-    
-    def download_from_kaggle(
-        self,
-        dataset_name: str,
-        version: str = "latest"
-    ) -> Path:
-        """
-        Download model from Kaggle Dataset.
-        
-        Args:
-            dataset_name: Kaggle dataset name (e.g., "username/dataset")
-            version: Model version to download
-            
-        Returns:
-            Path to downloaded model
-            
-        Note:
-            Requires Kaggle API credentials (~/.kaggle/kaggle.json)
-        """
-        try:
-            from kaggle.api.kaggle_api_extended import KaggleApi
-        except ImportError:
-            raise ImportError(
-                "Kaggle API not installed. Install with: pip install kaggle"
-            )
-        
-        # Initialize Kaggle API
-        api = KaggleApi()
-        api.authenticate()
-        
-        # Download dataset
-        download_path = self.models_dir / "temp_download"
-        download_path.mkdir(parents=True, exist_ok=True)
-        
-        logger.info(f"Downloading {dataset_name} from Kaggle...")
-        api.dataset_download_files(
-            dataset_name,
-            path=str(download_path),
-            unzip=True
-        )
-        
-        # Move to version directory
-        version_path = self.models_dir / version
-        if version_path.exists():
-            logger.warning(f"Overwriting existing model at {version_path}")
-        
-        # TODO: Implement proper extraction and moving logic
-        
-        logger.info(f"Model downloaded to {version_path}")
-        return version_path
 
 
 # Convenience function
