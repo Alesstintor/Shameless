@@ -55,25 +55,30 @@ class TwitterCollector:
         self._logged_in = False
 
     async def _login_if_needed(self):
-        """Logs in to the client using cookies from settings if not already logged in."""
+        """Logs in to the client using credentials from settings if not already logged in."""
         if self._logged_in:
             return
 
-        auth_token = self.settings.TWITTER_AUTH_TOKEN
-        ct0 = self.settings.TWITTER_CT0
+        username = self.settings.TWITTER_USERNAME
+        email = self.settings.TWITTER_EMAIL
+        password = self.settings.TWITTER_PASSWORD
 
-        if not auth_token or not ct0:
+        if not (username and email and password):
             raise ValueError(
-                "Twitter authentication cookies (TWITTER_AUTH_TOKEN, TWITTER_CT0) are not set in settings."
+                "Twitter credentials (TWITTER_USERNAME, TWITTER_EMAIL, TWITTER_PASSWORD) are not fully set in settings."
             )
 
         try:
-            logger.info("Attempting to log in to Twitter using cookies...")
-            await self.client.login(cookies={"auth_token": auth_token, "ct0": ct0})
+            logger.info(f"Attempting to log in to Twitter as '{username}'...")
+            await self.client.login(
+                auth_info_1=username,
+                auth_info_2=email,
+                password=password
+            )
             self._logged_in = True
             logger.info("Successfully logged in.")
         except TwitterException as e:
-            logger.error(f"Failed to log in with cookies: {e}")
+            logger.error(f"Failed to log in with credentials: {e}")
             raise
 
     def _parse_tweet(self, twikit_tweet) -> Tweet:
@@ -170,7 +175,7 @@ class TwitterCollector:
                     break
                 yield self._parse_tweet(tweet_obj)
                 count += 1
-        except TwikitError as e:
+        except TwitterException as e:
             logger.error(f"An error occurred collecting user tweets: {e}")
             raise
 

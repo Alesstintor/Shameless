@@ -24,9 +24,9 @@ class Settings(BaseSettings):
     
     # Twitter authentication settings (for twikit)
     # IMPORTANT: These must be set in your .env file
-    # Get these from your browser's cookies after logging in to twitter.com
-    TWITTER_AUTH_TOKEN: Optional[str] = None
-    TWITTER_CT0: Optional[str] = None
+    TWITTER_USERNAME: Optional[str] = None
+    TWITTER_EMAIL: Optional[str] = None
+    TWITTER_PASSWORD: Optional[str] = None
     
     # ML Model settings
     MODEL_NAME: str = "distilbert-base-uncased-finetuned-sst-2-english"
