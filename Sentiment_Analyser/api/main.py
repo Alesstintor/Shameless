@@ -7,7 +7,7 @@ Provides API endpoints for scraping tweets and analyzing sentiment.
 import logging
 from typing import List
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -18,6 +18,7 @@ from Sentiment_Analyser.scraper.collectors.bluesky_collector import BlueskyColle
 from Sentiment_Analyser.models import SentimentAnalyzer
 from Sentiment_Analyser.storage import UserDatabase
 from Sentiment_Analyser.api.schemas import TweetWithSentiment, SentimentAnalysisResult
+from Sentiment_Analyser.deepseek import DeepSeekAnalyzer
 
 # Initialize logger and settings
 logger = logging.getLogger(__name__)
@@ -52,6 +53,17 @@ except Exception as e:
     sentiment_analyzer = None
     logger.warning(f"Kaggle model not loaded: {e}. Sentiment analysis will be disabled.")
 
+# Initialize DeepSeek Analyzer
+try:
+    deepseek_analyzer = DeepSeekAnalyzer()
+    if deepseek_analyzer.is_available():
+        logger.info("✅ DeepSeek personality analyzer initialized successfully")
+    else:
+        logger.info("⚠️ DeepSeek API token not configured. Personality analysis disabled.")
+except Exception as e:
+    deepseek_analyzer = None
+    logger.warning(f"DeepSeek analyzer initialization failed: {e}")
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Shameless Sentiment Analyser API",
@@ -64,6 +76,51 @@ app.mount("/static", StaticFiles(directory="./frontend"), name="static")
 
 # Initialize User Database
 user_db = UserDatabase()
+
+
+# --- Background Tasks ---
+
+def generate_personality_analysis_task(handle: str):
+    """
+    Background task to generate personality analysis and update database.
+    
+    This runs asynchronously after the main analysis is complete.
+    """
+    try:
+        if not deepseek_analyzer or not deepseek_analyzer.is_available():
+            logger.info(f"⏭️ Skipping personality analysis for {handle} - DeepSeek not configured")
+            return
+        
+        logger.info(f"🧠 Background: Starting personality analysis for {handle}")
+        
+        # Get analysis from database
+        user_data = user_db.get_by_handle(handle)
+        if not user_data:
+            logger.warning(f"⚠️ Background: User data not found for {handle}")
+            return
+        
+        posts = user_data.get('posts', [])
+        user_name = user_data.get('user_name', handle)
+        
+        if not posts:
+            logger.warning(f"⚠️ Background: No posts found for {handle}")
+            return
+        
+        # Generate personality analysis
+        personality_analysis = deepseek_analyzer.analyze_personality(posts, user_name)
+        
+        if personality_analysis:
+            # Update database with personality analysis
+            user_data['personality_analysis'] = personality_analysis
+            user_db.save_analysis(user_data)
+            logger.info(f"✅ Background: Personality analysis saved for {handle}")
+        else:
+            logger.warning(f"⚠️ Background: DeepSeek returned no analysis for {handle}")
+            
+    except Exception as e:
+        logger.error(f"❌ Background: Error generating personality analysis for {handle}: {e}")
+        import traceback
+        logger.debug(f"   Traceback: {traceback.format_exc()}")
 
 
 # --- Root Endpoint ---
@@ -236,6 +293,7 @@ def analyze_twitter_user_sentiment(
 @app.get("/api/analyze/bluesky/user/{handle}", response_model=SentimentAnalysisResult)
 def analyze_bluesky_user_sentiment(
     handle: str,
+    background_tasks: BackgroundTasks,
     limit: int = Query(25, ge=1, le=100, description="Number of posts to analyze (1-100)."),
 ):
     """
@@ -347,6 +405,10 @@ def analyze_bluesky_user_sentiment(
         user_db.save_analysis(result.dict())
         logger.info(f"✅ Analysis saved successfully")
         
+        # Launch background task to generate personality analysis
+        background_tasks.add_task(generate_personality_analysis_task, handle)
+        logger.info(f"🚀 Launched background task for personality analysis of {handle}")
+        
         logger.info(f"🎉 Analysis complete for '{handle}': {len(analyzed_posts)} posts, {positive_count}+ / {negative_count}-")
         return result
         
@@ -357,3 +419,41 @@ def analyze_bluesky_user_sentiment(
         import traceback
         logger.debug(f"   Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+
+
+@app.get("/api/personality/{handle}")
+def get_personality_analysis(handle: str):
+    """
+    Get personality analysis for a user if it exists in the database.
+    
+    The personality analysis is generated automatically in the background
+    when a user is analyzed. This endpoint just retrieves it if available.
+    
+    Returns:
+        JSON with personality_analysis or null if not yet generated.
+    """
+    logger.info(f"📖 API endpoint called: GET /api/personality/{handle}")
+    
+    try:
+        # Get analysis from database
+        user_data = user_db.get_by_handle(handle)
+        
+        if not user_data:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"No analysis found for '{handle}'."
+            )
+        
+        personality_analysis = user_data.get('personality_analysis', None)
+        
+        return JSONResponse(content={
+            "handle": handle,
+            "personality_analysis": personality_analysis,
+            "is_available": personality_analysis is not None
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error retrieving personality analysis for '{handle}': {e}")
+        raise HTTPException(status_code=500, detail=str(e))

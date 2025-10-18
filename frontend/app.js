@@ -5,6 +5,7 @@ const title = document.getElementById('project-title');
 const searchForm = document.getElementById('search-form');
 const searchInput = document.getElementById('search-input');
 const themeToggle = document.getElementById('theme-toggle');
+const personalityLoader = document.getElementById('personality-loader');
 
 function createBubble(user, idx) {
   const el = document.createElement('button');
@@ -70,12 +71,73 @@ const mostNegativePost = document.getElementById('most-negative-post');
 
 let currentChart = null;
 
+// Cargar análisis de personalidad con DeepSeek (polling)
+async function loadPersonalityAnalysis(handle, attempts = 0) {
+  const MAX_ATTEMPTS = 6; // 30 segundos máximo (6 intentos * 5 segundos)
+  
+  try {
+    // Mostrar loader solo en el primer intento
+    if (attempts === 0) {
+      personalityLoader.classList.remove('hidden');
+      console.log(`🧠 Iniciando verificación de análisis de personalidad para ${handle}...`);
+    }
+    
+    console.log(`🔄 Intento ${attempts + 1}/${MAX_ATTEMPTS} para ${handle}...`);
+    
+    // Hacer petición GET para ver si ya existe
+    const response = await fetch(`/api/personality/${encodeURIComponent(handle)}`);
+    
+    if (!response.ok) {
+      console.warn(`⚠️ No se pudo obtener análisis de personalidad: ${response.status}`);
+      personalityLoader.classList.add('hidden');
+      return; // Mantener resumen base
+    }
+    
+    const data = await response.json();
+    
+    if (data.is_available && data.personality_analysis) {
+      // Actualizar el resumen con el análisis de personalidad
+      detailSummary.textContent = data.personality_analysis;
+      detailSummary.classList.add('personality-analysis');
+      personalityLoader.classList.add('hidden');
+      console.log('✅ Análisis de personalidad cargado desde BD');
+    } else if (attempts < MAX_ATTEMPTS - 1) {
+      console.log(`⏳ Análisis aún no disponible, reintentando en 5 segundos...`);
+      // Intentar de nuevo en 5 segundos
+      setTimeout(() => loadPersonalityAnalysis(handle, attempts + 1), 5000);
+    } else {
+      console.log('⏹️ Tiempo de espera agotado. Análisis no disponible.');
+      personalityLoader.classList.add('hidden');
+    }
+    
+  } catch (error) {
+    console.warn('⚠️ Error al cargar análisis de personalidad:', error);
+    personalityLoader.classList.add('hidden');
+    // Mantener el resumen base en caso de error
+  }
+}
+
 function openDetail(idx) {
   const user = USERS[idx];
   detailAvatar.src = user.avatar;
   detailName.textContent = user.name;
   detailUsername.textContent = '@' + user.username;
-  detailSummary.textContent = user.summary;
+  
+  // Si ya existe personality_analysis en los datos, mostrarlo directamente
+  if (user.personality_analysis) {
+    detailSummary.textContent = user.personality_analysis;
+    detailSummary.classList.add('personality-analysis');
+    console.log('✅ Mostrando análisis de personalidad desde caché');
+  } else {
+    // Mostrar resumen base y empezar a verificar si ya se generó
+    detailSummary.textContent = user.summary;
+    detailSummary.classList.remove('personality-analysis');
+    
+    // Intentar cargar análisis de personalidad (puede estar generándose)
+    if (user.username) {
+      loadPersonalityAnalysis(user.username);
+    }
+  }
   
   // Show most positive post
   if (user.most_positive) {
@@ -230,6 +292,7 @@ function mapAnalysisToUI(analysis) {
     name: analysis.user_name || analysis.user_handle || 'Unknown',
     sentiments: sentiments,
     summary: generateSummary(analysis),
+    personality_analysis: analysis.personality_analysis || null,
     most_positive: analysis.most_positive || null,
     most_negative: analysis.most_negative || null
   };

@@ -64,6 +64,11 @@ class Settings(BaseSettings):
     # External REST API base for precomputed analysis (optional)
     EXTERNAL_ANALYSIS_API_BASE: Optional[str] = None
     
+    # DeepSeek API for personality analysis
+    DEEPSEEK_API_TOKEN: Optional[str] = None
+    DEEPSEEK_API_URL: str = "https://api.deepseek.com/v1/chat/completions"
+    DEEPSEEK_MODEL: str = "deepseek-chat"
+    
     # Security
     SECRET_KEY: str = "changeme-in-production"
     API_KEY: Optional[str] = None

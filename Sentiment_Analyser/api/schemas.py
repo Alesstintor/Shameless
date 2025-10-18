@@ -32,3 +32,4 @@ class SentimentAnalysisResult(BaseModel):
     average_confidence: float
     most_positive: TweetWithSentiment
     most_negative: TweetWithSentiment
+    personality_analysis: Optional[str] = None

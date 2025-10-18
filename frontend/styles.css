@@ -115,6 +115,44 @@ body.light .theme-bulb:not(.on) svg{fill: var(--muted)}
   color:#e6eef6;
 }
 
+.summary-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:12px;
+}
+
+.personality-loader{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:0.85rem;
+  color:var(--muted);
+}
+
+.personality-loader.hidden{
+  display:none;
+}
+
+.spinner{
+  width:16px;
+  height:16px;
+  border:2px solid rgba(16,185,129,0.2);
+  border-top-color:#10b981;
+  border-radius:50%;
+  animation:spin 0.8s linear infinite;
+}
+
+@keyframes spin{
+  to{transform:rotate(360deg)}
+}
+
+.loader-text{
+  font-size:0.85rem;
+  color:var(--muted);
+  font-weight:500;
+}
+
 .section-content{
   line-height:1.6;
 }
@@ -135,6 +173,15 @@ body.light .theme-bulb:not(.on) svg{fill: var(--muted)}
   margin:0;
   color:var(--muted);
   font-size:0.95rem;
+  line-height:1.7;
+  white-space:pre-wrap;
+}
+
+.summary-text.personality-analysis{
+  color:#e2e8f0;
+  font-size:0.98rem;
+  line-height:1.8;
+  letter-spacing:0.02em;
 }
 
 .post-highlight .post-text{
@@ -170,6 +217,19 @@ body.light .post-highlight .post-text{
 
 body.light .summary-text{
   color:#6b7280;
+}
+
+body.light .summary-text.personality-analysis{
+  color:#0f172a;
+}
+
+body.light .spinner{
+  border-color:rgba(16,185,129,0.3);
+  border-top-color:#10b981;
+}
+
+body.light .loader-text{
+  color:#64748b;
 }
 
 body.light .detail-extras::-webkit-scrollbar-track{
