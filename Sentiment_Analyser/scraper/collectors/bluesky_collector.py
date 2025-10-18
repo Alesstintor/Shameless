@@ -8,7 +8,7 @@ from typing import Generator, List, Optional
 from atproto import Client, models
 
 from Sentiment_Analyser.config import get_settings
-from .schemas import Tweet
+from ..schemas import Tweet
 
 logger = logging.getLogger(__name__)
 

@@ -16,7 +16,7 @@ from Sentiment_Analyser.config import get_settings
 logger = logging.getLogger(__name__)
 
 
-from .schemas import Tweet
+from ..schemas import Tweet
 
 
 class TwitterCollector:
