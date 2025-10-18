@@ -1,10 +1,13 @@
-# 🎭 Shameless - Sentiment Analysis Platform
+# 🎭 Shameless - User Sentiment Profiler
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Hacktoberfest 2025](https://img.shields.io/badge/Hacktoberfest-2025-orange.svg)](https://hacktoberfest.com/)
+[![Kaggle](https://img.shields.io/badge/Kaggle-Model-blue.svg)](https://www.kaggle.com/)
 
-**A professional sentiment analysis platform** combining social media scraping with machine learning to analyze and classify sentiment in textual content.
+**¿Qué tipo de persona es este usuario en redes sociales?** 🤔
+
+Shameless analiza el perfil completo de un usuario en Twitter/X y genera un reporte detallado de su sentimiento. Proporciona una URL o nombre de usuario y obtén un análisis completo de personalidad basado en sus publicaciones.
 
 > 🎉 A project for **Hacktoberfest 2025 A Coruña**
 
@@ -27,30 +30,32 @@
 
 ## ✨ Features
 
-### Data Collection
-- 🐦 **Twitter/X Scraping** using `snscrape` (no API limits!)
-- 🔄 **Real-time data collection** with rate limiting
-- 📊 **Multi-platform support** (extensible to Reddit, News, etc.)
-- 💾 **Multiple storage formats** (JSON, CSV, Parquet)
+### 🎯 Core Functionality
+- **User Analysis**: Proporciona URL o username → Obtén perfil de sentimiento completo
+- **Smart Scraping**: Recolecta automáticamente tweets del usuario (sin límites de API)
+- **ML-Powered**: Usa modelos entrenados en Kaggle con GPU
+- **Comprehensive Reports**: Genera reportes detallados con insights y visualizaciones
 
-### Machine Learning
-- 🤖 **Pre-trained transformers** (BERT, DistilBERT, RoBERTa)
-- 🎯 **High accuracy** sentiment classification
-- ⚡ **Batch processing** for efficiency
-- 🔧 **Customizable preprocessing** pipeline
+### 📊 Analysis Capabilities
+- **Overall Sentiment**: ¿Es el usuario positivo, negativo o neutral?
+- **Temporal Analysis**: Evolución del sentimiento a lo largo del tiempo
+- **Topic Analysis**: ¿Sobre qué temas es más positivo/negativo?
+- **Engagement Correlation**: Relación entre sentimiento y engagement
+- **Insights**: Descubre patrones y tendencias automáticamente
 
-### Analysis & Visualization
-- 📈 **Interactive Jupyter notebooks** for exploration
-- 📊 **Beautiful visualizations** with matplotlib/seaborn
-- 📉 **Sentiment trends** over time
-- 💡 **Engagement analysis** by sentiment
+### 🤖 Machine Learning
+- **Kaggle Integration**: Modelos entrenados en Kaggle con GPU
+- **Auto-download**: Descarga automática de modelos via Kaggle API
+- **Version Control**: Gestión de versiones de modelos
+- **BERT-based**: Modelos de última generación (BERT, RoBERTa, DistilBERT)
+- **Fast Inference**: Batch processing optimizado
 
-### Professional Features
-- 🏗️ **Clean architecture** with separation of concerns
-- 🧪 **Type hints** and comprehensive docstrings
-- 📝 **Extensive logging** for debugging
-- ⚙️ **Configurable settings** via environment variables
-- 🔒 **Security best practices** (no hardcoded secrets)
+### 🎨 User Experience
+- **CLI Interface**: Interfaz de línea de comandos intuitiva
+- **Web UI** (Coming soon): Interface web con Streamlit
+- **PDF Reports**: Reportes profesionales exportables
+- **Interactive Dashboards**: Visualizaciones interactivas
+- **Cache System**: Sistema de caché para análisis rápidos
 
 ---
 

@@ -4,368 +4,219 @@ trigger: model_decision
 
 # Shameless - Development Rules & Guidelines
 
+## Project Structure
+
+### Kaggle (Training)
+- Notebooks para entrenamiento y experimentación
+- NO código de aplicación en notebooks
+- Documentar experimentos con markdown
+- Guardar modelos en Kaggle Datasets
+
+### Local (Application)
+Sentiment_Analyser/ ├── models/ # Inferencia, descarga, cache ├── scraper/ # Scraping de usuarios ├── analysis/ # Análisis y agregación ├── reporting/ # Generación de reportes └── ui/ # Interfaces (CLI, Streamlit)
+
+- Código local para producción
+- NO entrenar modelos localmente
+- Descargar modelos de Kaggle vía API
+- Optimizar para inferencia rápida
+
 ## Code Standards
 
-### Python Style Guide
-- Follow PEP 8 strictly
-- Use Black for code formatting (line length: 100)
-- Use isort for import sorting
-- Type hints are mandatory for all functions
-- Docstrings required (Google style)
+### Python Style
+- PEP 8 strictly, line length: 100
+- Formatter: Black, Import sorting: isort
+- Type hints: Mandatory, Docstrings: Google style
 
-### Naming Conventions
-- **Files**: `snake_case.py`
-- **Classes**: `PascalCase`
-- **Functions/Methods**: `snake_case()`
-- **Constants**: `UPPER_SNAKE_CASE`
-- **Private methods**: `_leading_underscore()`
-
-### Import Order
-1. Standard library imports
-2. Third-party imports
-3. Local application imports
-4. Use absolute imports, avoid relative imports in production code
-
-## Project Structure Rules
-
-### Directory Organization
-- Each module must have `__init__.py`
-- Keep related functionality together
-- Max file length: 500 lines (refactor if exceeded)
-- One class per file (exceptions for small helper classes)
-
-### Data Management
-- Raw data goes to `data/raw/` (never modify)
-- Processed data goes to `data/processed/`
-- Models saved in `data/models/` with versioning
-- Never commit large data files (use .gitignore)
-
-### Notebooks
-- Clear naming: `YYYY-MM-DD_purpose_description.ipynb`
-- Include markdown cells explaining each section
-- Restart kernel and run all cells before committing
-- Extract production code to modules (notebooks for exploration only)
-
-## Git Workflow
-
-### Commit Messages
-```
-<type>(<scope>): <subject>
-
-<body>
-
-<footer>
-```
-
-**Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
-
-**Examples**:
-- `feat(scraper): add Twitter rate limit handling`
-- `fix(model): resolve null value handling in preprocessing`
-- `docs(readme): update installation instructions`
-
-### Branch Strategy
-- `main`: Production-ready code
-- `develop`: Integration branch
-- `feature/*`: New features
-- `fix/*`: Bug fixes
-- `experiment/*`: ML experiments (can be messy)
-
-### Pull Requests
-- Descriptive title and description
-- Reference related issues
-- Include tests for new features
-- Update documentation
-- Ensure CI passes
-
-## Testing Requirements
-
-### Coverage Standards
-- Minimum 80% code coverage
-- 100% coverage for critical paths (data loss, security)
-- Unit tests for all business logic
-- Integration tests for API endpoints
-
-### Testing Structure
+### Model Loading
 ```python
-# tests/test_module.py
-import pytest
+# Good ✅
+loader = ModelLoader(kaggle_dataset="username/shameless-sentiment-models")
+model = loader.load_model(version="v2.0", cache=True)
+User Scraping
+python
+scraper = UserScraper(cache_enabled=True, rate_limit=1.0)
+tweets = scraper.get_user_tweets(username="example", limit=500, use_cache=True)
+Git Workflow
+Branches
+main: Production-ready
+develop: Integration
+feature/*: New features
+fix/*: Bug fixes
+kaggle/*: Experimentos
+Commit Messages
+bash
+feat(models): add Kaggle model downloader
+fix(scraper): resolve rate limit issue
+kaggle(training): experiment with RoBERTa
+Kaggle Workflow
+Experimentación
+python
+# ALWAYS document
+"""
+Experiment: Fine-tuning BERT
+Date: 2024-10-18
+Goal: Improve accuracy beyond 0.85
+"""
 
-class TestClassName:
-    def test_specific_behavior(self):
-        # Arrange
-        # Act
-        # Assert
-        pass
-```
+# ALWAYS log metrics
+metrics = {'accuracy': 0.87, 'f1_score': 0.86, 'training_time': '45min'}
 
-### Fixtures
-- Use pytest fixtures for common setup
-- Keep fixtures in `conftest.py`
-- Mock external API calls
+# ALWAYS save properly
+save_model_to_kaggle_dataset(model=model, version='v2.0', metrics=metrics)
+Versionado
+v1.x: Arquitectura inicial
+v2.x: Cambios de arquitectura/dataset
+v3.x: Modelos de producción
+Incrementar: cambio arquitectura, dataset, o mejora >2% accuracy
+Naming
+Kaggle: username/shameless-sentiment-models Files: model_v2.0.pt, tokenizer_v2.0/, config_v2.0.json
 
-## ML/Data Science Rules
-
-### Experimentation
-- Log all experiments with MLflow
-- Document hyperparameters
-- Save experiment results
-- Version control datasets (DVC)
-
-### Model Development
-- Always split: train (70%), validation (15%), test (15%)
-- Use cross-validation for small datasets
-- Set random seeds for reproducibility
-- Baseline model first, then iterate
-
-### Model Deployment
-- Model versioning mandatory
-- A/B testing before full rollout
-- Monitor model drift
-- Fallback mechanism if model fails
-
-### Data Processing
-```python
-# Good: Reusable pipeline
-from sklearn.pipeline import Pipeline
-
-pipeline = Pipeline([
-    ('scaler', StandardScaler()),
-    ('classifier', LogisticRegression())
-])
-
-# Bad: Hardcoded preprocessing
-data = (data - data.mean()) / data.std()  # Not reusable
-```
-
-## Scraping Ethics & Rules
-
-### Rate Limiting
-- Respect robots.txt
-- Implement exponential backoff
-- Max 1 request/second default
-- User-Agent header required
-
-### Data Collection
-- Only collect publicly available data
-- Respect user privacy
-- Anonymize personal information
-- Store minimal required data
-
-### Error Handling
-- Graceful degradation
-- Comprehensive logging
-- Retry logic with limits
-- Alert on critical failures
-
-## Security Rules
-
-### API Keys & Secrets
-- Never commit secrets to Git
-- Use `.env` files (in `.gitignore`)
-- Use environment variables in production
-- Rotate keys regularly
-
-### Data Security
-- Encrypt sensitive data at rest
-- Use HTTPS for all API calls
-- Sanitize all user inputs
-- Regular security audits
-
-### Dependencies
-- Pin dependency versions
-- Regular security updates
-- Use `pip-audit` for vulnerability scanning
-- Review dependencies before adding
-
-## Performance Guidelines
-
-### Code Optimization
-- Profile before optimizing
-- Use appropriate data structures
-- Vectorize operations (NumPy/Pandas)
-- Cache expensive computations
-
-### Database Queries
-- Use indexes appropriately
-- Avoid N+1 queries
-- Batch operations when possible
-- Connection pooling
-
-### API Performance
-- Implement caching (Redis)
-- Use pagination for large responses
-- Async operations for I/O
-- Monitor response times
-
-## Documentation Requirements
-
-### Code Documentation
-- Module-level docstring in all `.py` files
-- Class docstring explaining purpose
-- Function docstring with Args, Returns, Raises
-- Complex logic needs inline comments
-
-### Example Docstring
-```python
-def analyze_sentiment(text: str, model_version: str = "v1") -> dict:
-    """
-    Analyzes the sentiment of the given text.
-    
-    Args:
-        text: The text to analyze
-        model_version: Version of the model to use (default: "v1")
-    
-    Returns:
-        Dictionary containing:
-            - sentiment: "positive", "negative", or "neutral"
-            - confidence: Float between 0 and 1
-            - scores: Dict of all sentiment scores
-    
-    Raises:
-        ValueError: If text is empty
-        ModelNotFoundError: If model_version doesn't exist
-    
-    Example:
-        >>> analyze_sentiment("I love this!")
-        {'sentiment': 'positive', 'confidence': 0.95, ...}
-    """
-    pass
-```
-
-### Project Documentation
-- README.md with setup instructions
-- API documentation (OpenAPI/Swagger)
-- Architecture diagrams
-- Changelog for releases
-
-## Logging Standards
-
-### Log Levels
-- **DEBUG**: Detailed diagnostic info
-- **INFO**: General informational messages
-- **WARNING**: Warning messages
-- **ERROR**: Error messages
-- **CRITICAL**: Critical issues
-
-### Logging Format
-```python
-import logging
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+Testing
+Model
+python
+def test_model_inference():
+    model = load_test_model()
+    result = model.predict("I love this!")
+    assert result['sentiment'] == 'positive'
+    assert result['score'] > 0.8
+Scraper
+python
+def test_user_scraper():
+    scraper = UserScraper()
+    tweets = scraper.get_user_tweets("test_user", limit=10)
+    assert len(tweets) <= 10
+    assert all('content' in tweet for tweet in tweets)
+Performance
+Model
+Inference: <50ms/tweet
+Batch size: 32 optimal
+Memory: <2GB, Size: <500MB
+Scraping
+Rate limit: 1 req/sec (respetar siempre)
+Timeout: 30s max, Retry: 3 max
+Cache: 24h por usuario
+Optimization
+python
+# Good ✅
+sentiments = model.predict_batch(tweets, batch_size=32)
+tweets = scraper.get_user_tweets(user, use_cache=True)
+Error Handling
+python
+from sentiment_analyser.exceptions import (
+    UserNotFoundException, RateLimitException, ScraperException
 )
 
-logger = logging.getLogger(__name__)
-```
+try:
+    tweets = scraper.get_user_tweets(username)
+except UserNotFoundException:
+    logger.error(f"User {username} not found")
+except RateLimitException:
+    logger.warning("Rate limit hit, using cache")
+    tweets = cache.get(username)
+except ScraperException as e:
+    logger.error(f"Scraping failed: {e}")
+Documentation
+Code
+python
+def analyze_user(
+    username: str,
+    tweets_limit: int = 500,
+    include_timeline: bool = True
+) -> UserSentimentProfile:
+    """
+    Analiza el sentimiento de un usuario de Twitter.
+    
+    Args:
+        username: Username de Twitter (con o sin @)
+        tweets_limit: Número máximo de tweets
+        include_timeline: Si incluir análisis temporal
+        
+    Returns:
+        UserSentimentProfile con sentiment_summary, timeline, topics
+        
+    Raises:
+        UserNotFoundException, ScraperException, ModelException
+    """
+Kaggle Notebooks
+markdown
+# Sentiment Model Training v2.0
+## Objetivo: Entrenar BERT para clasificación
+## Dataset: Sentiment140 (1.6M tweets, 80/10/10 split)
+## Arquitectura: bert-base-uncased, Fine-tune last 2 layers
+## Hiperparámetros: LR=2e-5, Batch=16, Epochs=3
+## Resultados: Acc=0.87, F1=0.86, Time=45min
+File Organization
+.gitignore
+*.pt
+*.h5
+data/models/*
+data/cache/*
+!data/*/.gitkeep
+.kaggle/
+kaggle.json
+Always Commit
+Source code, tests, configs, docs, requirements
+.gitkeep en directorios vacíos
+Security
+API Keys
+python
+# Good ✅
+from sentiment_analyser.config import get_settings
+settings = get_settings()
+kaggle_username = settings.KAGGLE_USERNAME  # From .env
+.env
+env
+KAGGLE_USERNAME=your_username
+KAGGLE_KEY=your_key
+MODEL_VERSION=v2.0
+CACHE_ENABLED=true
+Never Log Sensitive Data
+python
+# Good ✅
+logger.info(f"Analyzing user: {username}")
 
-### What to Log
-- Application start/stop
-- Configuration changes
-- API requests/responses
-- Errors and exceptions (with stack trace)
-- Performance metrics
-- Model predictions (sampling)
+# Bad ❌
+logger.info(f"API Key: {api_key}")
+Deployment
+Pre-deployment
+ Tests pass
+ Model validated
+ Env variables set
+ Dependencies installed
+Release
+bash
+# Update version in pyproject.toml
+git tag -a v0.2.0 -m "Release v0.2.0"
+git push origin v0.2.0
+make clean && make install && make test
+Logging
+python
+logger.debug(f"Loading model from {model_path}")        # DEBUG
+logger.info(f"Analyzing user: {username}")              # INFO
+logger.warning(f"Using cached data")                    # WARNING
+logger.error(f"Failed to scrape: {error}")              # ERROR
+logger.critical(f"Model corrupted: {model_path}")       # CRITICAL
+Best Practices
+DO ✅
+Train in Kaggle, download via API
+Use caching, respect rate limits
+Write tests, document everything
+Handle errors, use type hints
+Follow PEP 8
+DON'T ❌
+Train locally, hardcode API keys
+Ignore rate limits, skip tests
+Commit large files, use print()
+Skip documentation
 
-## Dependencies Management
+**Character count: ~5,800** (well under 12k limit)
 
-### Requirements Files
-- `requirements.txt`: Production dependencies (pinned versions)
-- `requirements-dev.txt`: Development dependencies
-- `requirements-test.txt`: Testing dependencies
+This optimized version:
+- Removes verbose examples
+- Condenses code blocks
+- Keeps all essential rules and structure
+- Maintains readability
+- Preserves all critical information
 
-### Version Pinning
-```txt
-# Good: Specific versions
-pandas==2.0.3
-numpy==1.24.3
-
-# Acceptable: Compatible release
-scikit-learn~=1.3.0
-
-# Avoid: Unpinned
-# requests  # Bad!
-```
-
-## CI/CD Pipeline
-
-### Pre-commit Checks
-- Linting (flake8, mypy)
-- Formatting (black, isort)
-- Tests (pytest)
-- Security scan (bandit)
-
-### CI Requirements
-- All tests must pass
-- Code coverage ≥80%
-- No linting errors
-- Documentation builds successfully
-
-### Deployment
-- Automated to staging on merge to develop
-- Manual approval for production
-- Rollback plan required
-- Health checks post-deployment
-
-## Environment Setup
-
-### Development Environment
-```bash
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
-
-# Install dependencies
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
-
-# Setup pre-commit hooks
-pre-commit install
-```
-
-### Environment Variables
-```bash
-# .env.example (commit this)
-TWITTER_API_KEY=your_key_here
-DATABASE_URL=postgresql://user:pass@localhost/db
-MODEL_PATH=/path/to/models
-
-# .env (DO NOT commit)
-TWITTER_API_KEY=actual_secret_key
-```
-
-## Code Review Checklist
-
-- [ ] Code follows style guide
-- [ ] Tests added/updated
-- [ ] Documentation updated
-- [ ] No hardcoded secrets
-- [ ] Error handling adequate
-- [ ] Performance considered
-- [ ] Security reviewed
-- [ ] Backwards compatible (if applicable)
-
-## Emergency Procedures
-
-### Production Issues
-1. Assess severity
-2. Check monitoring/logs
-3. Rollback if critical
-4. Fix and test
-5. Deploy fix
-6. Post-mortem
-
-### Data Loss Prevention
-- Regular backups (automated)
-- Backup verification
-- Restore testing
-- Incident documentation
-
-## Contact & Resources
-
-- **Project Lead**: [TBD]
-- **Documentation**: `/docs`
-- **Issue Tracker**: GitHub Issues
-- **Chat**: [TBD]
-- **Wiki**: [TBD]
+You can copy this directly into your [.windsurf\rules\rules.md](cci:7://file:///c:/Users/Ales/Development/Shameless/.windsurf/rules/rules.md:0:0-0:0) file.
+Feedback submitted

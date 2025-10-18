@@ -2,180 +2,325 @@
 trigger: model_decision
 ---
 
-# Shameless - Sentiment Analysis Architecture
+# Shameless - User Sentiment Analysis Architecture
 
 ## Project Overview
-Shameless es un proyecto de análisis de sentimientos que combina scraping de redes sociales con machine learning para analizar y clasificar el sentimiento de contenido textual.
+Shameless es una aplicación de análisis de sentimientos que analiza el perfil completo de un usuario en redes sociales. El usuario proporciona una URL o nombre de usuario, la aplicación recolecta sus mensajes/tweets y calcula el sentimiento general de sus publicaciones usando modelos ML entrenados en Kaggle.
 
-## Core Components
+## Core Architecture
 
-### 1. Data Collection Layer (`Sentiment_Analyser/scraper/`)
-- **SNScrape Integration**: Módulo para recolección de datos de Twitter/X
-- **Data Pipeline**: Sistema de procesamiento y limpieza de datos
-- **Storage Manager**: Gestión de datos raw y procesados
+### 🎯 Flujo Principal
 
-### 2. Machine Learning Layer (`Sentiment_Analyser/models/`)
-- **Preprocessing**: Tokenización, normalización, feature extraction
-- **Model Training**: Entrenamiento de modelos de clasificación de sentimientos
-- **Model Inference**: Predicción en tiempo real
-- **Model Registry**: Versionado y gestión de modelos
+```
+Usuario → [URL/Username] → Scraper → Mensajes → Modelo (Kaggle) → Sentimiento
+```
 
-### 3. Analysis Layer (`Sentiment_Analyser/notebooks/`)
-- **Exploratory Analysis**: Notebooks Jupyter para análisis exploratorio
-- **Model Development**: Experimentación y desarrollo de modelos
-- **Visualization**: Dashboards y visualizaciones de resultados
+### 📦 Componentes
 
-### 4. API Layer (`Sentiment_Analyser/api/`)
-- **REST API**: Endpoints para acceso a funcionalidad
-- **Webhooks**: Integración con servicios externos
-- **Authentication**: Sistema de autenticación y autorización
+#### 1. **Training Environment (Kaggle)** 🏋️
+- **Ubicación**: Kaggle Notebooks
+- **Propósito**: Entrenamiento y experimentación de modelos
+- **Outputs**: 
+  - Modelo entrenado (`.pt`, `.h5`, o pickle)
+  - Métricas de evaluación
+  - Tokenizer/preprocessor
+  
+#### 2. **Local Application** 💻
+- **Ubicación**: Este repositorio
+- **Propósito**: Aplicación de producción
+- **Funcionalidad**:
+  - Acepta URL o username
+  - Scraping de perfil completo
+  - Inferencia con modelo pre-entrenado
+  - Generación de reporte de sentimiento
+
+#### 3. **Model Management** 🔄
+- Descarga automática de modelos desde Kaggle
+- Versionado de modelos
+- Cache local de modelos
+- Validación de compatibilidad
+
+## Detailed Architecture
+
+### Layer 1: Input Layer
+```python
+# Usuario proporciona:
+- Twitter/X URL: "https://twitter.com/username"
+- Username: "@username" o "username"
+- Cantidad de tweets (opcional): 100, 500, 1000
+```
+
+### Layer 2: Data Collection Layer
+```python
+Sentiment_Analyser/scraper/
+├── user_scraper.py          # Scraper enfocado en usuarios
+├── profile_analyzer.py      # Análisis del perfil completo
+└── cache_manager.py         # Cache de datos scrapeados
+```
+
+**Funcionalidades:**
+- Extraer todos los tweets de un usuario
+- Metadata del usuario (followers, following, bio)
+- Timeline completo o limitado por fecha
+- Rate limiting y manejo de errores
+- Cache para evitar re-scraping
+
+### Layer 3: Model Inference Layer
+```python
+Sentiment_Analyser/models/
+├── model_loader.py          # Carga modelos desde Kaggle
+├── inference_engine.py      # Motor de inferencia
+├── aggregator.py            # Agrega sentimientos
+└── kaggle_integration.py    # Descarga de Kaggle
+```
+
+**Funcionalidades:**
+- Descarga automática del modelo desde Kaggle Datasets
+- Cache local de modelos
+- Batch inference sobre tweets
+- Agregación de sentimientos (promedio ponderado)
+- Análisis temporal de sentimiento
+
+### Layer 4: Analysis & Reporting Layer
+```python
+Sentiment_Analyser/analysis/
+├── sentiment_profiler.py    # Perfil de sentimiento del usuario
+├── report_generator.py      # Genera reportes
+└── visualizer.py           # Gráficos y visualizaciones
+```
+
+**Outputs:**
+- **Sentimiento General**: Positivo/Negativo/Neutral (%)
+- **Timeline de Sentimiento**: Evolución temporal
+- **Topics**: Sobre qué habla positivo/negativo
+- **Engagement**: Relación sentimiento-engagement
+- **Reporte**: PDF/HTML con análisis completo
+
+## Technology Stack
+
+### Local Application
+- **Python 3.9+**: Lenguaje principal
+- **snscrape**: Scraping sin API limits
+- **PyTorch/TensorFlow**: Inferencia de modelos
+- **transformers**: Modelos de HuggingFace
+- **FastAPI**: API REST (opcional)
+- **Streamlit/Gradio**: UI web interactiva
+- **Kaggle API**: Descarga de modelos
+
+### Kaggle Environment
+- **Jupyter Notebooks**: Entrenamiento
+- **GPU**: Tesla P100/T4
+- **Datasets**: Sentiment140, Twitter datasets
+- **Libraries**: pandas, scikit-learn, transformers
+- **Output**: Modelos guardados en Kaggle Datasets
 
 ## Data Flow
 
 ```
-[Twitter/X] 
-    ↓ (snscrape)
-[Raw Data Collection]
-    ↓ (preprocessing)
-[Clean Dataset]
-    ↓ (feature engineering)
-[ML Pipeline]
-    ↓ (training/inference)
-[Sentiment Predictions]
-    ↓ (visualization)
-[Reports & Dashboards]
+┌─────────────────────────────────────────────────────────────┐
+│                    KAGGLE (Training)                         │
+│                                                              │
+│  Dataset → Preprocessing → Training → Validation → Model    │
+│                                                              │
+│  Output: model.pt, tokenizer, config.json                   │
+└──────────────────────┬───────────────────────────────────────┘
+                       │ (Download via Kaggle API)
+                       ↓
+┌─────────────────────────────────────────────────────────────┐
+│                   LOCAL APPLICATION                          │
+│                                                              │
+│  User Input (URL/Username)                                   │
+│         ↓                                                    │
+│  Scraper → User Timeline (tweets)                            │
+│         ↓                                                    │
+│  Preprocessing → Clean Tweets                                │
+│         ↓                                                    │
+│  Model Inference → Sentiment Scores                          │
+│         ↓                                                    │
+│  Aggregation → User Sentiment Profile                        │
+│         ↓                                                    │
+│  Report Generation → PDF/HTML/JSON                           │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
 ```
-
-## Technology Stack
-
-### Core Technologies
-- **Python 3.9+**: Lenguaje principal
-- **snscrape**: Scraping de redes sociales
-- **scikit-learn**: Machine learning tradicional
-- **transformers**: Modelos de lenguaje pre-entrenados (BERT, RoBERTa)
-- **pandas/numpy**: Manipulación de datos
-- **Jupyter**: Notebooks interactivos
-
-### ML/NLP Stack
-- **NLTK/spaCy**: Procesamiento de lenguaje natural
-- **TensorFlow/PyTorch**: Deep learning frameworks
-- **Hugging Face**: Modelos pre-entrenados
-- **MLflow**: Tracking de experimentos
-
-### Data & Storage
-- **SQLite/PostgreSQL**: Base de datos
-- **Redis**: Caché y colas
-- **MinIO/S3**: Almacenamiento de objetos
-
-### Monitoring & Deployment
-- **FastAPI**: Framework web
-- **Docker**: Containerización
-- **Prometheus/Grafana**: Monitoreo
-- **DVC**: Versionado de datos
 
 ## Module Structure
 
 ```
 Sentiment_Analyser/
-├── config/              # Configuración centralizada
-├── scraper/            # Módulos de scraping
-│   ├── collectors/     # Diferentes scrapers
-│   ├── parsers/        # Parsing de datos
-│   └── storage/        # Persistencia
-├── data/               # Datasets
-│   ├── raw/           # Datos sin procesar
-│   ├── processed/     # Datos procesados
-│   └── models/        # Modelos guardados
-├── models/            # Código ML
-│   ├── preprocessing/ # Limpieza y feature engineering
-│   ├── training/      # Scripts de entrenamiento
-│   ├── inference/     # Predicción
-│   └── evaluation/    # Métricas y evaluación
-├── notebooks/         # Jupyter notebooks
-│   ├── exploratory/   # Análisis exploratorio
-│   ├── experiments/   # Experimentos ML
-│   └── reports/       # Reportes finales
-├── api/               # API REST
-│   ├── routes/        # Endpoints
-│   ├── middleware/    # Middleware
-│   └── schemas/       # Validación de datos
-├── utils/             # Utilidades compartidas
-├── tests/             # Tests unitarios e integración
-└── scripts/           # Scripts de automatización
+├── config/                  # Configuración
+│   ├── settings.py         # Settings generales
+│   └── kaggle_config.py    # Config de Kaggle
+│
+├── scraper/                # Scraping de usuarios
+│   ├── user_scraper.py     # Scraper de perfiles
+│   ├── profile_parser.py   # Parser de datos de perfil
+│   └── cache_manager.py    # Cache de datos
+│
+├── models/                 # ML Models
+│   ├── model_loader.py     # Carga modelos de Kaggle
+│   ├── inference.py        # Inferencia
+│   ├── kaggle_api.py       # Integración con Kaggle API
+│   └── preprocessing/      # Preprocesamiento
+│
+├── analysis/               # Análisis y agregación
+│   ├── sentiment_profiler.py  # Perfil de sentimiento
+│   ├── aggregator.py           # Agregación de scores
+│   └── temporal_analyzer.py    # Análisis temporal
+│
+├── reporting/              # Generación de reportes
+│   ├── report_generator.py # Genera reportes
+│   ├── visualizer.py       # Gráficos
+│   └── templates/          # Templates HTML/PDF
+│
+├── ui/                     # User Interface
+│   ├── streamlit_app.py    # Web UI con Streamlit
+│   └── cli.py              # CLI interface
+│
+├── data/                   # Almacenamiento local
+│   ├── models/             # Modelos descargados de Kaggle
+│   ├── cache/              # Cache de scraping
+│   └── reports/            # Reportes generados
+│
+└── notebooks/              # Copia de notebooks Kaggle
+    └── training_notebook_copy.ipynb
 ```
 
-## Design Patterns
+## Kaggle Integration
 
-### 1. Repository Pattern
-- Abstracción de acceso a datos
-- Facilita testing con mocks
-- Separación de lógica de negocio y persistencia
+### Model Storage in Kaggle
+```
+Kaggle Dataset Structure:
+shameless-sentiment-models/
+├── model_v1/
+│   ├── model.pt              # Modelo PyTorch
+│   ├── tokenizer/            # Tokenizer
+│   ├── config.json           # Configuración
+│   ├── metrics.json          # Métricas de evaluación
+│   └── README.md             # Info del modelo
+```
 
-### 2. Factory Pattern
-- Creación dinámica de scrapers
-- Instanciación de modelos ML
-- Configuración de pipelines
+### Download & Load Process
+```python
+# 1. Download from Kaggle
+kaggle datasets download -d username/shameless-sentiment-models
 
-### 3. Pipeline Pattern
-- Procesamiento de datos en etapas
-- Transformaciones encadenadas
-- Flujo claro de datos
+# 2. Extract and load
+model = load_model('data/models/model_v1/model.pt')
+tokenizer = load_tokenizer('data/models/model_v1/tokenizer/')
 
-### 4. Strategy Pattern
-- Múltiples algoritmos de clasificación
-- Intercambiabilidad de modelos
-- A/B testing de estrategias
+# 3. Inference
+predictions = model.predict(tweets)
+```
 
-## Best Practices
+## Use Cases
 
-### Code Quality
-- **Type Hints**: Uso obligatorio de typing
-- **Docstrings**: Google style docstrings
-- **Linting**: Black, flake8, mypy
-- **Testing**: pytest con cobertura >80%
+### 1. Analizar Usuario Específico
+```python
+from sentiment_analyser import analyze_user
 
-### ML Best Practices
-- **Reproducibilidad**: Seeds fijos, versionado de datos
-- **Validation**: Cross-validation, train/test split
-- **Metrics**: Múltiples métricas (accuracy, F1, precision, recall)
-- **Explainability**: SHAP values, feature importance
+# Analizar por username
+result = analyze_user("@elonmusk", tweets_limit=500)
 
-### Data Management
-- **Versionado**: DVC para datasets y modelos
-- **Backups**: Automáticos y regulares
-- **Privacy**: Anonimización de datos sensibles
-- **Compliance**: GDPR compliance
+# Analizar por URL
+result = analyze_user("https://twitter.com/elonmusk", tweets_limit=500)
 
-## Security Considerations
+print(result.overall_sentiment)  # "Positive (67%)"
+print(result.sentiment_timeline) # Gráfico temporal
+result.generate_report("elon_musk_report.pdf")
+```
 
-- **API Keys**: Nunca en código, usar .env
-- **Rate Limiting**: Protección contra abuse
-- **Input Validation**: Sanitización de entradas
-- **Data Encryption**: En tránsito y en reposo
+### 2. Comparar Múltiples Usuarios
+```python
+users = ["@user1", "@user2", "@user3"]
+comparison = compare_users(users)
+comparison.show_chart()
+```
 
-## Scalability
-
-### Horizontal Scaling
-- Stateless API design
-- Task queues (Celery/RQ)
-- Load balancing
-
-### Vertical Scaling
-- Batch processing
-- Model optimization
-- Caching strategies
+### 3. Análisis Temporal
+```python
+# Ver evolución del sentimiento
+timeline = analyze_user_timeline("@username", start_date="2024-01-01")
+timeline.plot_sentiment_over_time()
+```
 
 ## Performance Targets
 
-- **Scraping**: 1000+ tweets/min
-- **Inference**: <100ms latency
-- **Batch Processing**: 10k+ samples/min
-- **API Response**: <200ms p95
+| Metric | Target |
+|--------|--------|
+| Scraping Speed | ~100 tweets/min |
+| Inference Time | <50ms per tweet |
+| Full Analysis (500 tweets) | <30 seconds |
+| Model Size | <500 MB |
+| Memory Usage | <2 GB |
+
+## Security & Privacy
+
+### Data Handling
+- ✅ Solo datos públicos
+- ✅ No almacenar datos sensibles
+- ✅ Cache temporal con expiración
+- ✅ Anonimización opcional en reportes
+
+### API Keys
+- ✅ Kaggle API key en .env
+- ✅ No hardcodear secrets
+- ✅ Validación de credenciales
+
+## Deployment Options
+
+### Local CLI
+```bash
+shameless analyze @username --tweets 500 --output report.pdf
+```
+
+### Web Interface (Streamlit)
+```bash
+streamlit run sentiment_analyser/ui/streamlit_app.py
+```
+
+### API Service (FastAPI)
+```bash
+uvicorn sentiment_analyser.api:app
+```
+
+### Docker
+```bash
+docker-compose up
+# Access: http://localhost:8501
+```
+
+## Model Versioning
+
+```
+models/
+├── v1.0/                   # Modelo inicial
+│   ├── model.pt
+│   └── metrics: acc=0.85
+├── v1.1/                   # Modelo mejorado
+│   ├── model.pt
+│   └── metrics: acc=0.87
+└── v2.0/                   # Nuevo arquitectura
+    ├── model.pt
+    └── metrics: acc=0.91
+```
 
 ## Future Enhancements
 
-1. **Multi-language Support**: Análisis en múltiples idiomas
-2. **Real-time Processing**: Stream processing con Kafka
-3. **Advanced Models**: Fine-tuning de LLMs
-4. **Web Dashboard**: Interface visual interactiva
-5. **AutoML**: Optimización automática de hiperparámetros
+### Phase 2
+- [ ] Multi-platform (Twitter, Instagram, Reddit)
+- [ ] Análisis de imágenes (OCR + sentiment)
+- [ ] Detección de sarcasmo
+- [ ] Análisis de emociones (joy, anger, fear, etc.)
+
+### Phase 3
+- [ ] Real-time monitoring de usuarios
+- [ ] Alertas de cambio de sentimiento
+- [ ] Dashboard web completo
+- [ ] API pública
+
+### Phase 4
+- [ ] ML automático (AutoML)
+- [ ] Fine-tuning personalizado
+- [ ] Multi-idioma
+- [ ] Análisis de influencers

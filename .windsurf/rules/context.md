@@ -5,350 +5,453 @@ trigger: model_decision
 # Shameless - Project Context
 
 ## Project Mission
-Desarrollar una plataforma robusta de análisis de sentimientos que combine web scraping de redes sociales con técnicas avanzadas de Machine Learning para extraer insights valiosos de datos públicos.
+Crear una aplicación de análisis de sentimientos que permite analizar el perfil completo de un usuario en redes sociales. El usuario proporciona una URL o nombre de usuario, la aplicación recopila sus publicaciones y genera un perfil completo de sentimiento usando modelos ML entrenados en Kaggle.
 
-## Target Use Cases
+## Core Concept
 
-### 1. Brand Monitoring
-- Análisis de menciones de marca en tiempo real
-- Detección temprana de crisis de reputación
-- Tracking de campañas de marketing
+### 🎯 Problema que Resolvemos
+**¿Qué tipo de persona es este usuario en redes sociales?**
 
-### 2. Social Listening
-- Tendencias emergentes en redes sociales
-- Opinión pública sobre temas específicos
-- Análisis de competencia
+- ¿Es mayormente positivo o negativo?
+- ¿Sobre qué temas es más positivo/negativo?
+- ¿Cómo ha evolucionado su sentimiento?
+- ¿Su sentimiento afecta su engagement?
 
-### 3. Market Research
-- Sentimiento del consumidor sobre productos
-- Identificación de pain points
-- Feedback de características
+### 💡 Solución
+Una aplicación local que:
+1. Acepta URL o username
+2. Scrape el perfil completo del usuario
+3. Analiza cada tweet con un modelo entrenado en Kaggle
+4. Genera un perfil de sentimiento completo
+5. Produce un reporte visual y estadístico
 
-### 4. Political Analysis
-- Análisis de opinión pública
-- Detección de polarización
-- Tracking de narrativas
+## Workflow Completo
+
+### 📊 En Kaggle (Entrenamiento)
+
+```python
+# 1. Preparación de datos
+dataset = load_sentiment_dataset()  # Sentiment140, etc.
+train, test = split_data(dataset)
+
+# 2. Entrenamiento
+model = train_sentiment_model(
+    data=train,
+    architecture="bert-base-uncased",
+    epochs=3,
+    batch_size=16
+)
+
+# 3. Evaluación
+metrics = evaluate(model, test)
+print(f"Accuracy: {metrics['accuracy']}")
+print(f"F1 Score: {metrics['f1']}")
+
+# 4. Guardar modelo
+save_model(model, "sentiment_model_v1")
+save_to_kaggle_dataset("shameless-sentiment-models")
+```
+
+### 💻 En Local (Aplicación)
+
+```python
+# 1. Usuario inicia análisis
+from sentiment_analyser import UserAnalyzer
+
+analyzer = UserAnalyzer()
+result = analyzer.analyze("@username", tweets_limit=500)
+
+# 2. Scraping automático
+tweets = scraper.get_user_tweets("username", limit=500)
+
+# 3. Descarga modelo de Kaggle (si no existe)
+model = load_model_from_kaggle("sentiment_model_v1")
+
+# 4. Inferencia
+sentiments = model.predict_batch(tweets)
+
+# 5. Agregación y análisis
+profile = aggregate_sentiments(sentiments, tweets)
+
+# 6. Reporte
+profile.generate_report("username_report.pdf")
+profile.show_interactive_dashboard()
+```
+
+## Use Cases Detallados
+
+### 1. Análisis de Influencer
+**Caso:** Una marca quiere contratar un influencer y necesita saber si su contenido es positivo.
+
+```python
+analyzer = UserAnalyzer()
+result = analyzer.analyze("@influencer", tweets_limit=1000)
+
+print(result.summary)
+# Output:
+# Overall Sentiment: Positive (73%)
+# Negative tweets: 12%
+# Neutral tweets: 15%
+# Most positive topics: Technology, Gaming
+# Most negative topics: Politics
+```
+
+### 2. Monitoreo de Marca Personal
+**Caso:** Un profesional quiere analizar cómo se comunica en redes.
+
+```python
+result = analyzer.analyze("@professional")
+result.show_timeline()  # Muestra evolución temporal
+result.identify_patterns()  # Identifica patrones
+
+# Sugerencias:
+# - Tus tweets sobre "work" son 60% negativos
+# - Considera cambiar el tono en temas profesionales
+# - Tus tweets más populares son positivos
+```
+
+### 3. Análisis Comparativo
+**Caso:** Comparar el sentimiento de varios usuarios.
+
+```python
+users = ["@user1", "@user2", "@user3"]
+comparison = analyzer.compare_users(users)
+
+comparison.show_comparison_chart()
+comparison.export_excel("comparison.xlsx")
+```
+
+### 4. Análisis Temporal
+**Caso:** Ver cómo ha cambiado el sentimiento de un usuario.
+
+```python
+result = analyzer.analyze_timeline(
+    "@username",
+    start_date="2023-01-01",
+    end_date="2024-01-01"
+)
+
+result.plot_sentiment_evolution()
+# Muestra gráfico de línea con sentimiento a lo largo del tiempo
+```
 
 ## Technical Context
 
-### Why snscrape?
-- **No API limits**: A diferencia de la API oficial de Twitter
-- **Historical data**: Acceso a tweets antiguos
-- **Free**: Sin costes de API
-- **Flexible**: Múltiples plataformas soportadas
+### Por qué Kaggle para Training
 
-### ML Model Strategy
-1. **Baseline**: Modelos tradicionales (Logistic Regression, SVM)
-2. **Advanced**: Transfer learning con BERT/RoBERTa
-3. **Production**: Modelo híbrido optimizado para latencia
+**Ventajas:**
+- ✅ **GPU gratuita**: P100, T4 (30h/semana)
+- ✅ **Datasets públicos**: Sentiment140, Twitter datasets
+- ✅ **Colaboración**: Notebooks públicos
+- ✅ **Versionado**: Kaggle Datasets para modelos
+- ✅ **Reproducibilidad**: Ambiente consistente
 
-### Data Pipeline
-- **Volume**: ~10K-100K tweets/día
-- **Velocity**: Near real-time (batch cada 5 min)
-- **Variety**: Text, metadata, user info
-- **Veracity**: Filtrado de spam y bots
-
-## Project Phases
-
-### Phase 1: MVP (Current)
-- ✅ Project structure
-- 🔄 Basic scraper implementation
-- 🔄 Simple sentiment model (VADER baseline)
-- 🔄 Jupyter notebook for exploration
-- ⏳ Basic CLI interface
-
-### Phase 2: Core Features
-- Advanced ML models (fine-tuned BERT)
-- Data persistence (SQLite → PostgreSQL)
-- REST API with FastAPI
-- Docker containerization
-- Unit and integration tests
-
-### Phase 3: Scale & Polish
-- Real-time processing pipeline
-- Web dashboard (React/Vue)
-- Model monitoring and retraining
-- Multi-language support
-- Cloud deployment (AWS/GCP)
-
-### Phase 4: Advanced Features
-- Entity recognition and extraction
-- Topic modeling
-- Trend prediction
-- Automated reporting
-- Multi-platform support (Reddit, News)
-
-## Key Technologies Explained
-
-### snscrape
-```python
-# Example usage
-import snscrape.modules.twitter as sntwitter
-
-query = "bitcoin since:2024-01-01"
-for tweet in sntwitter.TwitterSearchScraper(query).get_items():
-    print(tweet.content)
+**Flujo:**
+```
+Kaggle Notebook → Train Model → Save to Dataset → Download Locally
 ```
 
-### Transformers for Sentiment
-```python
-from transformers import pipeline
+### Por qué Local Application
 
-sentiment_analyzer = pipeline(
-    "sentiment-analysis",
-    model="nlptown/bert-base-multilingual-uncased-sentiment"
-)
-result = sentiment_analyzer("I love this product!")
+**Ventajas:**
+- ✅ **Sin límites de tiempo**: No hay timeout de notebook
+- ✅ **Mejor UX**: Streamlit/CLI personalizado
+- ✅ **Integración**: Fácil de distribuir
+- ✅ **Control**: Código privado si es necesario
+
+### Model Management
+
+#### Versionado de Modelos
+```
+Kaggle Dataset: shameless-sentiment-models
+├── v1.0/
+│   ├── model.pt                  # 250 MB
+│   ├── tokenizer/
+│   ├── config.json
+│   └── metrics.json             # accuracy: 0.85
+│
+├── v1.1/                        # Improved
+│   ├── model.pt                 # 250 MB
+│   ├── metrics.json             # accuracy: 0.87
+│
+└── v2.0/                        # New architecture
+    ├── model.pt                 # 180 MB (distilled)
+    └── metrics.json             # accuracy: 0.89
 ```
 
-### FastAPI Structure
-```python
-from fastapi import FastAPI
-
-app = FastAPI()
-
-@app.post("/analyze")
-async def analyze_text(text: str):
-    sentiment = model.predict(text)
-    return {"sentiment": sentiment}
+#### Local Cache
+```
+data/models/
+├── current -> v2.0/            # Symlink al modelo actual
+├── v1.0/
+├── v1.1/
+└── v2.0/
 ```
 
 ## Data Schema
 
-### Raw Tweet Data
+### User Profile Analysis Result
+
+```json
+{
+  "username": "@elonmusk",
+  "analysis_date": "2024-10-18T12:00:00Z",
+  "tweets_analyzed": 500,
+  "date_range": {
+    "start": "2024-09-01",
+    "end": "2024-10-18"
+  },
+  "sentiment_summary": {
+    "overall": "positive",
+    "positive_pct": 67.2,
+    "negative_pct": 18.5,
+    "neutral_pct": 14.3,
+    "confidence": 0.89
+  },
+  "sentiment_timeline": [
+    {"date": "2024-09-01", "sentiment": 0.65},
+    {"date": "2024-09-02", "sentiment": 0.70},
+    ...
+  ],
+  "topic_sentiments": {
+    "technology": {"score": 0.82, "positive": 89, "negative": 5},
+    "politics": {"score": 0.45, "positive": 32, "negative": 41}
+  },
+  "engagement_analysis": {
+    "positive_tweets_avg_likes": 1250,
+    "negative_tweets_avg_likes": 890,
+    "sentiment_engagement_correlation": 0.65
+  },
+  "insights": [
+    "User is predominantly positive (67%)",
+    "Most negative about politics",
+    "Positive tweets get 40% more engagement",
+    "Sentiment stable over time"
+  ]
+}
+```
+
+### Tweet Data (Internal)
+
 ```json
 {
   "id": "1234567890",
-  "content": "Tweet text here",
-  "user": "username",
-  "date": "2024-01-01T12:00:00Z",
-  "likes": 42,
-  "retweets": 10,
-  "replies": 5,
-  "hashtags": ["tag1", "tag2"],
-  "mentions": ["@user1"]
-}
-```
-
-### Processed Data
-```json
-{
-  "tweet_id": "1234567890",
-  "clean_text": "tweet text here",
-  "sentiment": "positive",
-  "confidence": 0.95,
-  "scores": {
-    "positive": 0.95,
-    "neutral": 0.04,
-    "negative": 0.01
+  "content": "Original tweet text",
+  "clean_content": "preprocessed text",
+  "sentiment": {
+    "label": "positive",
+    "score": 0.95,
+    "probabilities": {
+      "positive": 0.95,
+      "negative": 0.03,
+      "neutral": 0.02
+    }
   },
-  "entities": ["Bitcoin", "Tesla"],
-  "language": "en",
-  "processed_at": "2024-01-01T12:00:00Z"
+  "metadata": {
+    "date": "2024-10-18T10:00:00Z",
+    "likes": 1200,
+    "retweets": 450,
+    "replies": 89
+  }
 }
 ```
 
-## Model Performance Targets
+## Configuration
 
-### Classification Metrics
-- **Accuracy**: >85%
-- **F1 Score**: >0.83
-- **Precision**: >0.85 (minimize false positives)
-- **Recall**: >0.80 (catch most sentiments)
+### Kaggle Setup
 
-### Operational Metrics
-- **Inference Time**: <100ms per sample
-- **Throughput**: >100 samples/second
-- **Uptime**: 99.5%
-- **Error Rate**: <1%
+```bash
+# 1. Crear cuenta en Kaggle
+# 2. Ir a Account → API → Create New API Token
+# 3. Descargar kaggle.json
+
+# 4. Configurar credenciales
+mkdir ~/.kaggle
+cp kaggle.json ~/.kaggle/
+chmod 600 ~/.kaggle/kaggle.json
+```
+
+### Local Setup
+
+```env
+# .env
+KAGGLE_USERNAME=your_username
+KAGGLE_KEY=your_key
+
+# Model settings
+MODEL_DATASET=your_username/shameless-sentiment-models
+MODEL_VERSION=v2.0
+AUTO_UPDATE_MODEL=true
+
+# Scraper settings
+MAX_TWEETS_PER_USER=500
+CACHE_EXPIRY_HOURS=24
+RATE_LIMIT=1.0
+
+# Output
+REPORTS_DIR=data/reports
+CACHE_DIR=data/cache
+```
 
 ## Common Workflows
 
-### 1. Data Collection Workflow
+### 1. Train New Model in Kaggle
+
+```python
+# En Kaggle Notebook
+
+# Load dataset
+from kaggle import api
+api.dataset_download_files('kazanova/sentiment140')
+
+# Train
+model = train_model()
+
+# Save
+torch.save(model.state_dict(), 'model.pt')
+save_tokenizer(tokenizer, 'tokenizer/')
+
+# Create dataset
+!kaggle datasets version -p . -m "Updated model v2.0"
+```
+
+### 2. Use Model Locally
+
 ```bash
-# Collect tweets
-python -m sentiment_analyser.scraper collect --query "python" --limit 1000
+# Download model (automático si no existe)
+python -m sentiment_analyser.models download-model
 
-# Process raw data
-python -m sentiment_analyser.scraper process --input data/raw/tweets.json
+# Analyze user
+python -m sentiment_analyser analyze @username --output report.pdf
 
-# Store in database
-python -m sentiment_analyser.scraper store --input data/processed/tweets.json
+# Or use Python API
+python
+>>> from sentiment_analyser import UserAnalyzer
+>>> analyzer = UserAnalyzer()
+>>> result = analyzer.analyze("@username")
+>>> result.show()
 ```
 
-### 2. Model Training Workflow
+### 3. Update Model
+
 ```bash
-# Prepare dataset
-python scripts/prepare_dataset.py --source data/processed/ --output data/ml/
+# Download nueva versión
+python -m sentiment_analyser.models update-model --version v2.0
 
-# Train model
-python -m sentiment_analyser.models.training.train --config config/model_config.yaml
+# Validate
+python -m sentiment_analyser.models validate-model
 
-# Evaluate model
-python -m sentiment_analyser.models.evaluation.evaluate --model data/models/sentiment_v1/
-
-# Deploy model
-python scripts/deploy_model.py --model sentiment_v1 --environment production
+# Set as current
+python -m sentiment_analyser.models set-current v2.0
 ```
 
-### 3. Analysis Workflow
-```bash
-# Launch Jupyter
-jupyter lab
+## Performance Considerations
 
-# Open notebook: notebooks/exploratory/sentiment_analysis.ipynb
-# Run analysis
-# Export insights to reports/
-```
+### Scraping
+- **Rate Limiting**: 1 request/segundo (configurable)
+- **Cache**: 24h por usuario
+- **Batch Size**: 100 tweets por request
+- **Timeout**: 30s por request
 
-## Configuration Management
+### Inference
+- **Batch Processing**: 32 tweets por batch
+- **Device**: CPU por defecto, GPU opcional
+- **Max Length**: 512 tokens
+- **Quantization**: Opcional para modelos grandes
 
-### Config File Structure
-```yaml
-# config/config.yaml
-scraper:
-  platform: twitter
-  rate_limit: 1  # requests/second
-  max_results: 1000
-  
-model:
-  name: "bert-base-uncased"
-  max_length: 512
-  batch_size: 32
-  
-database:
-  type: postgresql
-  host: localhost
-  port: 5432
-  
-api:
-  host: 0.0.0.0
-  port: 8000
-  workers: 4
-```
-
-## Error Handling Strategy
-
-### Scraper Errors
-- **Rate Limit**: Exponential backoff, max 5 retries
-- **Network Error**: Retry with jitter
-- **Invalid Data**: Log and skip, continue processing
-- **Authentication**: Alert and halt
-
-### ML Errors
-- **Model Load Failure**: Fall back to baseline model
-- **Prediction Error**: Return neutral sentiment with flag
-- **Invalid Input**: Sanitize and retry, or reject
-- **OOM**: Reduce batch size dynamically
-
-## Monitoring & Observability
-
-### Key Metrics to Track
-- Scraping rate (tweets/min)
-- Processing latency (p50, p95, p99)
-- Model accuracy drift
-- API response times
-- Error rates by type
-- Resource utilization (CPU, Memory, Disk)
-
-### Alerting Rules
-- Error rate >5% → Warning
-- Error rate >10% → Critical
-- API latency p95 >500ms → Warning
-- Model accuracy <80% → Critical
-- Disk usage >90% → Warning
+### Storage
+- **Models**: ~250 MB cada uno
+- **Cache**: ~10 MB por 500 tweets
+- **Reports**: ~2 MB PDF por análisis
 
 ## Development Tips
 
-### Quick Start Commands
-```bash
-# Setup
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
+### Testing with Sample Users
 
-# Run tests
-pytest tests/ -v --cov
+```python
+# Use public test accounts
+TEST_USERS = [
+    "@TestUser123",      # Small account (100 tweets)
+    "@MediumUser456",    # Medium (1000 tweets)
+    "@LargeUser789"      # Large (10000+ tweets)
+]
 
-# Format code
-black . && isort .
-
-# Start API
-uvicorn sentiment_analyser.api.main:app --reload
-
-# Run scraper
-python -m sentiment_analyser.scraper --help
+# Quick test
+result = analyzer.analyze(TEST_USERS[0], tweets_limit=50)
 ```
 
-### Debugging
-- Use `logging` extensively, not `print()`
-- Enable debug mode: `LOG_LEVEL=DEBUG`
-- Use `pdb` or `ipdb` for breakpoints
-- Check logs in `logs/` directory
+### Debugging Model Issues
 
-### Common Issues
-1. **snscrape not working**: Platform may have changed HTML structure, check for updates
-2. **Model too slow**: Use smaller model or quantization
-3. **Memory issues**: Reduce batch size or use streaming
-4. **Database locked**: Check for zombie connections
+```python
+# Load model manually
+from sentiment_analyser.models import ModelLoader
 
-## Resources & References
+loader = ModelLoader()
+model = loader.load("v2.0")
 
-### Documentation
-- [snscrape GitHub](https://github.com/JustAnotherArchivist/snscrape)
-- [Transformers Documentation](https://huggingface.co/docs/transformers)
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [scikit-learn Documentation](https://scikit-learn.org/)
+# Test single prediction
+text = "I love this!"
+result = model.predict(text)
+print(result)  # Should be positive
+```
 
-### Datasets for Training
-- [Sentiment140](http://help.sentiment140.com/for-students)
-- [IMDB Reviews](https://ai.stanford.edu/~amaas/data/sentiment/)
-- [Twitter Sentiment](https://www.kaggle.com/datasets/kazanova/sentiment140)
+### Monitoring Performance
 
-### Pretrained Models
-- [nlptown/bert-base-multilingual-uncased-sentiment](https://huggingface.co/nlptown/bert-base-multilingual-uncased-sentiment)
-- [cardiffnlp/twitter-roberta-base-sentiment](https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment)
-- [distilbert-base-uncased-finetuned-sst-2-english](https://huggingface.co/distilbert-base-uncased-finetuned-sst-2-english)
+```python
+import time
 
-## Contributing Guidelines
+start = time.time()
+result = analyzer.analyze("@username", tweets_limit=500)
+duration = time.time() - start
 
-### For Hacktoberfest Contributors
-1. Check existing issues or create new one
-2. Fork the repository
-3. Create feature branch
-4. Make changes following our standards
-5. Add tests
-6. Submit PR with clear description
+print(f"Analysis took: {duration:.2f}s")
+print(f"Tweets/second: {500/duration:.1f}")
+```
 
-### Good First Issues
-- Add new data sources (Reddit, News)
-- Improve preprocessing pipeline
-- Add visualization functions
-- Write documentation
-- Add unit tests
-- Performance optimizations
+## Resources
 
-## Project Roadmap
+### Kaggle Datasets for Training
+- [Sentiment140](https://www.kaggle.com/datasets/kazanova/sentiment140) - 1.6M tweets
+- [Twitter Sentiment](https://www.kaggle.com/datasets/jp797498e/twitter-entity-sentiment-analysis) - Entity-level
+- [IMDB Reviews](https://www.kaggle.com/datasets/lakshmi25npathi/imdb-dataset-of-50k-movie-reviews) - For transfer learning
 
-### Q4 2024
-- [x] Project initialization
-- [ ] Core scraper implementation
-- [ ] Baseline ML model
-- [ ] Basic API
+### Pre-trained Models
+- `bert-base-uncased` - General purpose
+- `distilbert-base-uncased` - Faster, smaller
+- `cardiffnlp/twitter-roberta-base-sentiment` - Twitter-specific
 
-### Q1 2025
-- [ ] Advanced models (BERT fine-tuning)
-- [ ] Database integration
-- [ ] Docker deployment
-- [ ] CI/CD pipeline
+### Tools
+- **Kaggle API**: [Documentation](https://www.kaggle.com/docs/api)
+- **snscrape**: [GitHub](https://github.com/JustAnotherArchivist/snscrape)
+- **transformers**: [HuggingFace Docs](https://huggingface.co/docs/transformers)
+- **Streamlit**: [Documentation](https://docs.streamlit.io/)
 
-### Q2 2025
-- [ ] Real-time processing
-- [ ] Web dashboard
-- [ ] Multi-language support
-- [ ] Cloud deployment
+## Roadmap
 
-### Future
-- [ ] Multi-platform support
-- [ ] Advanced analytics
-- [ ] AutoML integration
-- [ ] Enterprise features
+### MVP (Current Phase)
+- [x] Project structure
+- [ ] Kaggle notebook template
+- [ ] Model download from Kaggle
+- [ ] User scraping
+- [ ] Basic sentiment analysis
+- [ ] CLI interface
+
+### Phase 2
+- [ ] Streamlit web UI
+- [ ] PDF report generation
+- [ ] Temporal analysis
+- [ ] Topic analysis
+- [ ] Model auto-update
+
+### Phase 3
+- [ ] Multi-user comparison
+- [ ] Real-time monitoring
+- [ ] Email alerts
+- [ ] Dashboard analytics
+- [ ] API REST
+
+### Phase 4
+- [ ] Multi-platform (Instagram, Reddit)
+- [ ] Image analysis
+- [ ] Emotion detection
+- [ ] Influencer metrics
