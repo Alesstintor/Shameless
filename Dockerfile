@@ -65,4 +65,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import sentiment_analyser; print('OK')" || exit 1
 
 # Default command
-CMD ["python", "-m", "sentiment_analyser"]
+CMD ["uvicorn", "Sentiment_Analyser.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
