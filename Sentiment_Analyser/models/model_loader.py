@@ -25,7 +25,7 @@ class KaggleModelLoader:
     Supports loading models from local cache for inference.
     """
     
-    def __init__(self, models_dir: str = "data/models"):
+    def __init__(self, models_dir: str = "Sentiment_Analyser/data/models"):
         """
         Initialize model loader.
         

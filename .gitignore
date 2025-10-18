@@ -87,3 +87,7 @@ tmp/
 Thumbs.db
 .Spotlight-V100
 .Trashes
+
+# Private Tests
+.tests/
+
