@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  sentiment-analyser:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shameless-sentiment-analyser
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - MODEL_DEVICE=${MODEL_DEVICE:-cpu}
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/sentiment_db
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./Sentiment_Analyser/data:/app/Sentiment_Analyser/data
+      - ./logs:/app/logs
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    networks:
+      - sentiment-network
+
+  db:
+    image: postgres:15-alpine
+    container_name: shameless-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=sentiment_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - sentiment-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: shameless-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - sentiment-network
+
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shameless-jupyter
+    command: jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    volumes:
+      - ./Sentiment_Analyser:/app/Sentiment_Analyser
+      - ./logs:/app/logs
+    ports:
+      - "8888:8888"
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    networks:
+      - sentiment-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  sentiment-network:
+    driver: bridge
