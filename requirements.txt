@@ -7,7 +7,7 @@ pandas==2.1.4
 numpy==1.26.2
 
 # Web scraping
-snscrape==0.7.0.20230622
+twikit
 
 # Machine Learning - Inference only
 transformers==4.36.2

@@ -22,11 +22,11 @@ class Settings(BaseSettings):
     RAW_DATA_DIR: Path = DATA_DIR / "raw"
     PROCESSED_DATA_DIR: Path = DATA_DIR / "processed"
     
-    # Scraper settings
-    SCRAPER_RATE_LIMIT: float = 1.0  # requests per second
-    SCRAPER_MAX_RETRIES: int = 3
-    SCRAPER_TIMEOUT: int = 30
-    SCRAPER_USER_AGENT: str = "Shameless-Sentiment-Analyser/0.1"
+    # Twitter authentication settings (for twikit)
+    # IMPORTANT: These must be set in your .env file
+    # Get these from your browser's cookies after logging in to twitter.com
+    TWITTER_AUTH_TOKEN: Optional[str] = None
+    TWITTER_CT0: Optional[str] = None
     
     # ML Model settings
     MODEL_NAME: str = "distilbert-base-uncased-finetuned-sst-2-english"

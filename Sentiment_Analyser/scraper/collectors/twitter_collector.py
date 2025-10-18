@@ -1,24 +1,27 @@
-"""
-Twitter data collector using snscrape.
 
-Provides functionality to scrape tweets based on queries with rate limiting
-and error handling.
-"""
+'''
+Twitter data collector using twikit.
+
+Provides functionality to scrape tweets using cookie-based authentication.
+'''
 
 import logging
-import time
+import asyncio
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Generator, List, Optional
+from typing import AsyncGenerator, List, Optional
 
-import snscrape.modules.twitter as sntwitter
+from twikit import Client
+from twikit.errors import TwikitError
+
+from Sentiment_Analyser.config import get_settings
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class Tweet:
-    """Data class representing a scraped tweet."""
+    """Data class representing a scraped tweet. Kept consistent for downstream compatibility."""
     
     id: str
     content: str
@@ -42,182 +45,133 @@ class Tweet:
 
 class TwitterCollector:
     """
-    Collector for Twitter data using snscrape.
-    
-    Provides rate limiting, error handling, and data normalization.
+    Collector for Twitter data using twikit.
+    Handles authentication and provides async methods for data collection.
     """
     
-    def __init__(
-        self,
-        rate_limit: float = 1.0,
-        max_retries: int = 3,
-        timeout: int = 30
-    ):
+    def __init__(self):
+        """Initialize Twitter collector with twikit client."""
+        self.settings = get_settings()
+        self.client = Client('en-US')
+        self._logged_in = False
+
+    async def _login_if_needed(self):
+        """Logs in to the client using cookies from settings if not already logged in."""
+        if self._logged_in:
+            return
+
+        auth_token = self.settings.TWITTER_AUTH_TOKEN
+        ct0 = self.settings.TWITTER_CT0
+
+        if not auth_token or not ct0:
+            raise ValueError("Twitter authentication cookies (TWITTER_AUTH_TOKEN, TWITTER_CT0) are not set in settings.")
+
+        try:
+            logger.info("Attempting to log in to Twitter using cookies...")
+            await self.client.login(cookies={
+                'auth_token': auth_token,
+                'ct0': ct0
+            })
+            self._logged_in = True
+            logger.info("Successfully logged in.")
+        except TwikitError as e:
+            logger.error(f"Failed to log in with cookies: {e}")
+            raise
+
+    def _parse_tweet(self, twikit_tweet) -> Tweet:
         """
-        Initialize Twitter collector.
+        Parse a twikit tweet object to our internal Tweet dataclass.
         
         Args:
-            rate_limit: Maximum requests per second
-            max_retries: Maximum number of retry attempts
-            timeout: Request timeout in seconds
-        """
-        self.rate_limit = rate_limit
-        self.max_retries = max_retries
-        self.timeout = timeout
-        self._last_request_time = 0.0
-        
-    def _rate_limit_sleep(self):
-        """Sleep to respect rate limiting."""
-        elapsed = time.time() - self._last_request_time
-        sleep_time = (1.0 / self.rate_limit) - elapsed
-        
-        if sleep_time > 0:
-            time.sleep(sleep_time)
-            
-        self._last_request_time = time.time()
-    
-    def _parse_tweet(self, tweet_obj) -> Tweet:
-        """
-        Parse snscrape tweet object to our Tweet dataclass.
-        
-        Args:
-            tweet_obj: Raw tweet object from snscrape
+            twikit_tweet: Raw tweet object from twikit.
             
         Returns:
-            Parsed Tweet object
+            Parsed Tweet object.
         """
+        user_mentions = [mention['screen_name'] for mention in twikit_tweet.user_mentions]
+        # The URL can be constructed from the username and tweet id
+        tweet_url = f"https://twitter.com/{twikit_tweet.user.screen_name}/status/{twikit_tweet.id}"
+
         return Tweet(
-            id=str(tweet_obj.id),
-            content=tweet_obj.rawContent,
-            user=tweet_obj.user.displayname,
-            username=tweet_obj.user.username,
-            date=tweet_obj.date,
-            likes=tweet_obj.likeCount or 0,
-            retweets=tweet_obj.retweetCount or 0,
-            replies=tweet_obj.replyCount or 0,
-            url=tweet_obj.url,
-            hashtags=tweet_obj.hashtags or [],
-            mentions=[m.username for m in (tweet_obj.mentionedUsers or [])],
-            language=tweet_obj.lang
+            id=twikit_tweet.id,
+            content=twikit_tweet.text,
+            user=twikit_tweet.user.name,
+            username=twikit_tweet.user.screen_name,
+            date=twikit_tweet.created_at,
+            likes=twikit_tweet.favorite_count,
+            retweets=twikit_tweet.retweet_count,
+            replies=twikit_tweet.reply_count,
+            url=tweet_url,
+            hashtags=twikit_tweet.hashtags,
+            mentions=user_mentions,
+            language=twikit_tweet.lang
         )
-    
-    def search(
+
+    async def search(
         self,
         query: str,
-        limit: Optional[int] = None,
-        since: Optional[str] = None,
+        limit: int = 100,
+        since: Optional[str] = None, # Note: twikit search doesn't directly support date ranges
         until: Optional[str] = None
-    ) -> Generator[Tweet, None, None]:
+    ) -> AsyncGenerator[Tweet, None]:
         """
         Search for tweets matching the query.
         
         Args:
-            query: Search query (supports Twitter advanced search syntax)
-            limit: Maximum number of tweets to collect
-            since: Start date in YYYY-MM-DD format
-            until: End date in YYYY-MM-DD format
+            query: Search query.
+            limit: Maximum number of tweets to collect.
             
         Yields:
-            Tweet objects
-            
-        Example:
-            >>> collector = TwitterCollector()
-            >>> for tweet in collector.search("python", limit=100):
-            ...     print(tweet.content)
+            Tweet objects.
         """
-        # Build query with date filters
-        full_query = query
-        if since:
-            full_query += f" since:{since}"
-        if until:
-            full_query += f" until:{until}"
-            
-        logger.info(f"Starting tweet collection with query: {full_query}")
+        await self._login_if_needed()
+        logger.info(f"Starting tweet search with query: '{query}'")
         
-        scraper = sntwitter.TwitterSearchScraper(full_query)
         count = 0
-        
         try:
-            for tweet_obj in scraper.get_items():
-                self._rate_limit_sleep()
-                
-                try:
-                    tweet = self._parse_tweet(tweet_obj)
-                    yield tweet
-                    
-                    count += 1
-                    if count % 100 == 0:
-                        logger.info(f"Collected {count} tweets")
-                    
-                    if limit and count >= limit:
-                        break
-                        
-                except Exception as e:
-                    logger.warning(f"Error parsing tweet: {e}")
-                    continue
-                    
-        except Exception as e:
-            logger.error(f"Error during tweet collection: {e}")
+            async for tweet_obj in self.client.search_tweet(query, 'Latest'):
+                if count >= limit:
+                    break
+                yield self._parse_tweet(tweet_obj)
+                count += 1
+        except TwikitError as e:
+            logger.error(f"An error occurred during tweet search: {e}")
             raise
-            
-        logger.info(f"Collection completed. Total tweets: {count}")
-    
-    def get_user_tweets(
+
+        logger.info(f"Search completed. Total tweets collected: {count}")
+
+    async def get_user_tweets(
         self,
         username: str,
-        limit: Optional[int] = None
-    ) -> Generator[Tweet, None, None]:
+        limit: int = 100
+    ) -> AsyncGenerator[Tweet, None]:
         """
         Get tweets from a specific user.
         
         Args:
-            username: Twitter username (without @)
-            limit: Maximum number of tweets to collect
+            username: Twitter username (without @).
+            limit: Maximum number of tweets to collect.
             
         Yields:
-            Tweet objects
+            Tweet objects.
         """
+        await self._login_if_needed()
         logger.info(f"Collecting tweets from user: @{username}")
-        
-        scraper = sntwitter.TwitterUserScraper(username)
-        count = 0
-        
+
         try:
-            for tweet_obj in scraper.get_items():
-                self._rate_limit_sleep()
-                
-                try:
-                    tweet = self._parse_tweet(tweet_obj)
-                    yield tweet
-                    
-                    count += 1
-                    if limit and count >= limit:
-                        break
-                        
-                except Exception as e:
-                    logger.warning(f"Error parsing tweet: {e}")
-                    continue
-                    
-        except Exception as e:
-            logger.error(f"Error collecting user tweets: {e}")
+            # First, get the user ID from the screen name
+            user = await self.client.get_user_by_screen_name(username)
+            if not user:
+                raise ValueError(f"User with username '{username}' not found.")
+
+            count = 0
+            async for tweet_obj in self.client.get_user_tweets(user.id, 'Tweets'):
+                if count >= limit:
+                    break
+                yield self._parse_tweet(tweet_obj)
+                count += 1
+        except TwikitError as e:
+            logger.error(f"An error occurred collecting user tweets: {e}")
             raise
-            
-        logger.info(f"Collected {count} tweets from @{username}")
-    
-    def get_hashtag_tweets(
-        self,
-        hashtag: str,
-        limit: Optional[int] = None
-    ) -> Generator[Tweet, None, None]:
-        """
-        Get tweets for a specific hashtag.
-        
-        Args:
-            hashtag: Hashtag to search (without #)
-            limit: Maximum number of tweets to collect
-            
-        Yields:
-            Tweet objects
-        """
-        query = f"#{hashtag}"
-        yield from self.search(query, limit=limit)
+
+        logger.info(f"Collection completed for @{username}. Total tweets: {count}")
