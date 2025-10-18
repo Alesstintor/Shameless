@@ -164,92 +164,71 @@ title.addEventListener('mouseover', () => title.style.letterSpacing = '2px');
 title.addEventListener('mouseout', () => title.style.letterSpacing = '0.6px');
 
 // Initialize
-let USERS = MOCK_USERS.slice().reverse(); // most recent first
-renderGrid(USERS);
+let USERS = MOCK_USERS.slice().reverse(); // most recent first (fallback)
 
-// Search handling - call backend to fetch user tweets (BlueSky)
+// Try to load stored users from server. If the server or endpoint is unavailable,
+// we fall back to the MOCK_USERS defined above.
+async function loadStoredUsers() {
+  try {
+    const res = await fetch('/api/stored_users');
+    if (!res.ok) throw new Error('Server returned ' + res.status);
+    const data = await res.json();
+    if (Array.isArray(data) && data.length) {
+      // Expecting data entries to match the structure used in the frontend
+      USERS = data.slice(0, 10);
+    }
+  } catch (e) {
+    console.warn('Could not load stored users from server, using mock data:', e);
+  }
+  renderGrid(USERS);
+}
+
+loadStoredUsers();
+
+// Search handling - mock behavior: add new user at the front
 searchForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const qRaw = searchInput.value && searchInput.value.trim();
-  if (!qRaw) return;
-  const q = qRaw.replace(/^@/, '');
+  const q = searchInput.value && searchInput.value.trim();
+  if (!q) return;
 
+  const handle = q.replace(/^@/, '');
+  // call backend to fetch and store external analysis
   try {
-    const resp = await fetch(`/api/external/user/${encodeURIComponent(q)}`);
-    if (!resp.ok) {
-      alert('Usuario no encontrado o error en el servidor');
-      return;
-    }
-    const data = await resp.json();
-    // data is expected to follow the external schema with fields:
-    // { user_name, user_handle, user_avatar, posts: [ { id, text, author, created_at, url, sentiment, confidence } ], ... }
-    let tweets = [];
-    let name = q;
-    let avatar = `https://cdn.dicebear.com/6.x/initials/svg?seed=${encodeURIComponent(q)}`;
-    try {
-      if (data.posts && Array.isArray(data.posts)) {
-        tweets = data.posts.map(p => p.text || p.content || '');
-      }
-      if (data.user_name) name = data.user_name;
-      if (data.user_avatar) avatar = data.user_avatar;
-    } catch (e) {
-      console.warn('Unexpected external payload shape, falling back to defaults', e);
-    }
+    const res = await fetch(`/api/external/fetch/${encodeURIComponent(handle)}`);
+    if (!res.ok) throw new Error('Server returned ' + res.status);
+    const data = await res.json();
 
-    // build user object
-    const userObj = {
-      username: q,
-      name: name,
-      avatar: avatar,
-      tweets: tweets,
-      words: [],
-      summary: '',
-      emotions: {},
+    // The external JSON may not match our UI shape exactly. Attempt to map common fields.
+    const mapped = {
+      avatar: data.avatar || data.profile_image_url || `https://i.pravatar.cc/150?u=${encodeURIComponent(handle)}`,
+      username: data.handle || handle,
+      name: data.name || data.display_name || handle,
+      emotions: data.emotions || data.sentiment_distribution || { Joy: 0.5, Sadness: 0.2, Anger: 0.1, Fear: 0.1, Surprise: 0.1 },
+      tweets: data.tweets || data.posts || [],
+      words: data.words || data.top_words || [],
+      summary: data.summary || data.description || ''
     };
 
-    // compute top words (simple split + freq)
-    const stop = new Set(['y','o','la','el','de','que','en','a','is','the','and','to','of','for','with','this','that','it','I','you']);
-    const freq = {};
-    tweets.forEach(t => {
-      t.split(/\W+/).forEach(w => {
-        if (!w) return;
-        const ww = w.toLowerCase();
-        if (stop.has(ww) || ww.length < 3) return;
-        freq[ww] = (freq[ww] || 0) + 1;
-      });
-    });
-    const words = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,12).map(x=>x[0]);
-    userObj.words = words;
-
-    // simple emotion heuristic: count presence of positive/negative words
-    const pos = ['love','happy','great','good','awesome','joy','amazing','like','enjoy','feliz','bueno'];
-    const neg = ['hate','bad','sad','terrible','angry','worst','malo','triste','odio'];
-    let p=0,n=0;
-    tweets.forEach(t => {
-      const txt = t.toLowerCase();
-      pos.forEach(w=>{ if (txt.includes(w)) p++; });
-      neg.forEach(w=>{ if (txt.includes(w)) n++; });
-    });
-    const total = Math.max(1, p+n);
-    userObj.emotions = { Joy: p/total, Sadness: n/total, Anger: 0, Fear: 0, Surprise: 1 - (p/total + n/total) };
-
-    // summary: small heuristic
-    if (p > n) userObj.summary = 'Tends to post positive content.';
-    else if (n > p) userObj.summary = 'Tends to post negative content.';
-    else userObj.summary = 'Mixed or neutral posting.';
-
-    // add to front and render
-    USERS.unshift(userObj);
-    USERS = USERS.slice(0,10);
+    // update local list and re-render
+    USERS.unshift(mapped);
+    USERS = USERS.slice(0, 10);
     renderGrid(USERS);
-
-    // open detail for the newly added user (at index 0)
-    openDetail(0);
+  } catch (e) {
+    console.warn('Failed to fetch & store user from server; falling back to in-memory mock.', e);
+    const newUser = {
+      avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(q)}`,
+      username: handle,
+      name: q,
+      emotions: { Joy: Math.random(), Sadness: Math.random(), Anger: Math.random(), Fear: Math.random(), Surprise: Math.random() },
+      tweets: [`Tweet generado para ${q}`],
+      words: ['mock', 'data'],
+      summary: 'Perfil agregado desde la búsqueda.'
+    };
+    USERS.unshift(newUser);
+    USERS = USERS.slice(0, 10); // keep last 10
+    renderGrid(USERS);
+  } finally {
     searchInput.value = '';
-
-  } catch (err) {
-    console.error(err);
-    alert('Error al buscar usuario');
   }
 });
 
