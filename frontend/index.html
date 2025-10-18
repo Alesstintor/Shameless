@@ -9,24 +9,40 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
+    <!-- theme bulb in the top-right -->
+    <button id="theme-toggle" class="theme-bulb" aria-pressed="false" aria-label="Alternar modo"></button>
+    
     <main class="wrap">
       <header class="header">
         <div class="title-row">
-          <h1 id="project-title">Shameless</h1>
+          <h1 id="project-title">🔍 Shameless</h1>
+          <p class="tagline">Análisis de Sentimiento con IA</p>
         </div>
-        <p class="subtitle">Últimos 10 usuarios buscados</p>
+        <p class="subtitle">Analiza el sentimiento de posts de Bluesky con inteligencia artificial</p>
 
         <div class="controls">
           <form id="search-form" class="search-form" action="#" onsubmit="return false;">
-            <input id="search-input" placeholder="Buscar usuario (ej: elonmusk)" aria-label="Buscar usuario" />
-            <button id="search-btn" type="submit">Buscar</button>
+            <input id="search-input" placeholder="Buscar usuario de Bluesky (ej: jay.bsky.team)" aria-label="Buscar usuario" />
+            <button id="search-btn" type="submit">
+              <span class="btn-icon">🚀</span>
+              <span class="btn-text">Analizar</span>
+            </button>
           </form>
         </div>
-        <!-- theme bulb in the top-right -->
-        <button id="theme-toggle" class="theme-bulb" aria-pressed="false" aria-label="Alternar modo"></button>
+        
+        <div class="recent-label">
+          <span class="label-icon">📋</span>
+          <span>Últimos análisis</span>
+        </div>
       </header>
 
       <section id="users-grid" class="grid" aria-label="Últimos usuarios"></section>
+      
+      <div id="empty-state" class="empty-state">
+        <div class="empty-icon">🤖</div>
+        <h2>¡Comienza tu primer análisis!</h2>
+        <p>Busca un usuario de Bluesky arriba para analizar el sentimiento de sus posts</p>
+      </div>
 
       <!-- Detail modal / panel -->
       <div id="detail" class="detail hidden" role="dialog" aria-modal="true" aria-hidden="true">
@@ -48,27 +64,33 @@
           </div>
 
           <div class="detail-extras">
-            <section>
+            <section class="info-section summary-section">
               <h3>📊 Resumen</h3>
-              <p id="detail-summary" class="summary"></p>
+              <div class="section-content">
+                <p id="detail-summary" class="summary-text"></p>
+              </div>
             </section>
             
-            <section class="highlight-post positive-post">
+            <section class="info-section positive-post">
               <h3>🌟 Tweet más positivo</h3>
-              <div id="most-positive-post" class="post-highlight">
-                <p class="post-text"></p>
-                <div class="post-meta">
-                  <span class="post-confidence"></span>
+              <div class="section-content">
+                <div id="most-positive-post" class="post-highlight">
+                  <p class="post-text"></p>
+                  <div class="post-meta">
+                    <span class="post-confidence"></span>
+                  </div>
                 </div>
               </div>
             </section>
             
-            <section class="highlight-post negative-post">
+            <section class="info-section negative-post">
               <h3>💔 Tweet más negativo</h3>
-              <div id="most-negative-post" class="post-highlight">
-                <p class="post-text"></p>
-                <div class="post-meta">
-                  <span class="post-confidence"></span>
+              <div class="section-content">
+                <div id="most-negative-post" class="post-highlight">
+                  <p class="post-text"></p>
+                  <div class="post-meta">
+                    <span class="post-confidence"></span>
+                  </div>
                 </div>
               </div>
             </section>
@@ -76,7 +98,13 @@
         </div>
       </div>
     </main>
-    <footer class="site-footer">Made with &lt;3 for Hacktoberfest 2025</footer>
+    
+    <footer class="site-footer">
+      <div class="footer-content">
+        <p class="footer-text">Made with ❤️ for <strong>Hacktoberfest 2025</strong></p>
+        <p class="footer-tech">Powered by DistilBERT • FastAPI • Bluesky API</p>
+      </div>
+    </footer>
 
     <script src="/static/app.js"></script>
   </body>

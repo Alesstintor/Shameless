@@ -1,5 +1,6 @@
 // Render users grid
 const grid = document.getElementById('users-grid');
+const emptyState = document.getElementById('empty-state');
 const title = document.getElementById('project-title');
 const searchForm = document.getElementById('search-form');
 const searchInput = document.getElementById('search-input');
@@ -43,7 +44,17 @@ function createBubble(user, idx) {
 
 function renderGrid(users) {
   grid.innerHTML = '';
-  users.slice(0, 10).forEach((u, i) => grid.appendChild(createBubble(u, i)));
+  
+  if (users.length === 0) {
+    // Mostrar empty state
+    emptyState.classList.add('visible');
+    grid.style.display = 'none';
+  } else {
+    // Mostrar grid con usuarios
+    emptyState.classList.remove('visible');
+    grid.style.display = 'grid';
+    users.slice(0, 10).forEach((u, i) => grid.appendChild(createBubble(u, i)));
+  }
 }
 
 // Detail panel logic
@@ -108,9 +119,9 @@ function openDetail(idx) {
   const colors = [];
   
   const colorMap = {
-    'Positivo': '#4ade80',  // Verde
-    'Negativo': '#f43f5e',  // Rojo
-    'Neutral': '#60a5fa'    // Azul
+    'Positivo': '#10b981',  // Verde esmeralda
+    'Negativo': '#ef4444',  // Rojo
+    'Neutral': '#06b6d4'    // Cyan
   };
   
   Object.entries(sentiments).forEach(([label, count]) => {
