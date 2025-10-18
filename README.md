@@ -44,11 +44,12 @@ Shameless analiza el perfil completo de un usuario en Twitter/X y genera un repo
 - **Insights**: Descubre patrones y tendencias automáticamente
 
 ### 🤖 Machine Learning
-- **Kaggle Integration**: Modelos entrenados en Kaggle con GPU
-- **Auto-download**: Descarga automática de modelos via Kaggle API
-- **Version Control**: Gestión de versiones de modelos
-- **BERT-based**: Modelos de última generación (BERT, RoBERTa, DistilBERT)
-- **Fast Inference**: Batch processing optimizado
+- **Kaggle Training**: Entrena modelos en Kaggle con GPU gratuita ⚡
+- **Data-Agnostic**: Modelo funciona con tweets, reviews, cualquier texto 📝
+- **Flexible Input**: Acepta 1..n textos de cualquier fuente 🎯
+- **Version Control**: Gestión de versiones de modelos (v1.0, v1.1, v2.0) 📦
+- **BERT-based**: Modelos de última generación (BERT, RoBERTa, DistilBERT) 🤖
+- **Fast Inference**: Batch processing optimizado 🚀
 
 ### 🎨 User Experience
 - **CLI Interface**: Interfaz de línea de comandos intuitiva
@@ -123,24 +124,27 @@ cp .env.example .env
 jupyter notebook Sentiment_Analyser/notebooks/sentiment_analysis.ipynb
 ```
 
-### First Analysis in 3 Steps
+### Quick Analysis with Kaggle Model
 
 ```python
-from sentiment_analyser.scraper import TwitterCollector
 from sentiment_analyser.models import SentimentAnalyzer
 
-# 1. Collect tweets
-collector = TwitterCollector()
-tweets = list(collector.search("python programming", limit=100))
+# Use Kaggle-trained model (data-agnostic)
+analyzer = SentimentAnalyzer(use_kaggle_model=True, kaggle_model_version="v1.0")
 
-# 2. Analyze sentiment
-analyzer = SentimentAnalyzer()
-for tweet in tweets:
-    result = analyzer.analyze(tweet.content)
-    print(f"{result['sentiment']}: {tweet.content[:50]}...")
+# Analyze single text
+result = analyzer.analyze("I love this product!")
+print(result)  # {'sentiment': 'positive', 'score': 0.99}
 
-# 3. Done! 🎉
+# Analyze multiple texts (1..n from any source)
+texts = ["Great experience!", "Terrible service", "Not bad"]
+results = analyzer.analyze_batch(texts)
+
+# Done! 🎉
 ```
+
+> **Note:** To use Kaggle models, first train them in Kaggle and download locally.  
+> See [KAGGLE_WORKFLOW.md](KAGGLE_WORKFLOW.md) for complete instructions.
 
 ---
 
