@@ -1,7 +1,7 @@
 {
   "id": "aleselmaquinas/sentiment-analysis",
   "title": "Sentiment Analysis",
-  "code_file": "Sentiment_Analyser/notebooks/sentiment_analysis.ipynb",
+  "code_file": "./sentiment_analysis.ipynb",
   "language": "python",
   "kernel_type": "notebook",
   "is_private": true
