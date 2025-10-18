@@ -71,7 +71,7 @@ const mostNegativePost = document.getElementById('most-negative-post');
 
 let currentChart = null;
 
-// Cargar análisis de personalidad con DeepSeek (polling)
+// Cargar opinión con DeepSeek (polling)
 async function loadPersonalityAnalysis(handle, attempts = 0) {
   const MAX_ATTEMPTS = 6; // 30 segundos máximo (6 intentos * 5 segundos)
   
@@ -79,7 +79,7 @@ async function loadPersonalityAnalysis(handle, attempts = 0) {
     // Mostrar loader solo en el primer intento
     if (attempts === 0) {
       personalityLoader.classList.remove('hidden');
-      console.log(`🧠 Iniciando verificación de análisis de personalidad para ${handle}...`);
+      console.log(`💭 Iniciando verificación de opinión para ${handle}...`);
     }
     
     console.log(`🔄 Intento ${attempts + 1}/${MAX_ATTEMPTS} para ${handle}...`);
@@ -88,7 +88,7 @@ async function loadPersonalityAnalysis(handle, attempts = 0) {
     const response = await fetch(`/api/personality/${encodeURIComponent(handle)}`);
     
     if (!response.ok) {
-      console.warn(`⚠️ No se pudo obtener análisis de personalidad: ${response.status}`);
+      console.warn(`⚠️ No se pudo obtener opinión: ${response.status}`);
       personalityLoader.classList.add('hidden');
       return; // Mantener resumen base
     }
@@ -96,7 +96,7 @@ async function loadPersonalityAnalysis(handle, attempts = 0) {
     const data = await response.json();
     
     if (data.is_available && data.personality_analysis) {
-      // Actualizar el resumen con el análisis de personalidad
+      // Actualizar el resumen con la opinión
       detailSummary.textContent = data.personality_analysis;
       detailSummary.classList.add('personality-analysis');
       personalityLoader.classList.add('hidden');
@@ -106,21 +106,21 @@ async function loadPersonalityAnalysis(handle, attempts = 0) {
       if (userIndex !== -1) {
         USERS[userIndex].personality_analysis = data.personality_analysis;
         USERS[userIndex].is_new_analysis = false; // Ya no es nuevo
-        console.log('✅ Análisis guardado en caché local');
+        console.log('✅ Opinión guardada en caché local');
       }
       
-      console.log('✅ Análisis de personalidad cargado desde BD');
+      console.log('✅ Opinión cargada desde BD');
     } else if (attempts < MAX_ATTEMPTS - 1) {
-      console.log(`⏳ Análisis aún no disponible, reintentando en 5 segundos...`);
+      console.log(`⏳ Opinión aún no disponible, reintentando en 5 segundos...`);
       // Intentar de nuevo en 5 segundos
       setTimeout(() => loadPersonalityAnalysis(handle, attempts + 1), 5000);
     } else {
-      console.log('⏹️ Tiempo de espera agotado. Análisis no disponible.');
+      console.log('⏹️ Tiempo de espera agotado. Opinión no disponible.');
       personalityLoader.classList.add('hidden');
     }
     
   } catch (error) {
-    console.warn('⚠️ Error al cargar análisis de personalidad:', error);
+    console.warn('⚠️ Error al cargar opinión:', error);
     personalityLoader.classList.add('hidden');
     // Mantener el resumen base en caso de error
   }
@@ -132,25 +132,25 @@ function openDetail(idx) {
   detailName.textContent = user.name;
   detailUsername.textContent = '@' + user.username;
   
-  // Si ya existe personality_analysis en los datos, mostrarlo directamente
+  // Si ya existe opinión en los datos, mostrarlo directamente
   if (user.personality_analysis) {
     detailSummary.textContent = user.personality_analysis;
     detailSummary.classList.add('personality-analysis');
-    console.log('✅ Mostrando análisis de personalidad desde caché');
+    console.log('✅ Mostrando opinión desde caché');
   } else if (user.is_new_analysis) {
     // Es un análisis NUEVO → iniciar polling
     detailSummary.textContent = user.summary;
     detailSummary.classList.remove('personality-analysis');
     
-    console.log('🆕 Análisis nuevo detectado, iniciando polling...');
+    console.log('🆕 Análisis nuevo detectado, iniciando polling de opinión...');
     if (user.username) {
       loadPersonalityAnalysis(user.username);
     }
   } else {
-    // Es un análisis VIEJO sin personality_analysis → solo mostrar resumen base
+    // Es un análisis VIEJO sin opinión → solo mostrar resumen base
     detailSummary.textContent = user.summary;
     detailSummary.classList.remove('personality-analysis');
-    console.log('📜 Análisis antiguo sin personality_analysis, mostrando solo resumen base');
+    console.log('📜 Análisis antiguo sin opinión, mostrando solo resumen base');
   }
   
   // Show most positive post

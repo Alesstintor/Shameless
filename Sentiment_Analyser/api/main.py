@@ -57,9 +57,9 @@ except Exception as e:
 try:
     deepseek_analyzer = DeepSeekAnalyzer()
     if deepseek_analyzer.is_available():
-        logger.info("✅ DeepSeek personality analyzer initialized successfully")
+        logger.info("✅ DeepSeek opinion generator initialized successfully")
     else:
-        logger.info("⚠️ DeepSeek API token not configured. Personality analysis disabled.")
+        logger.info("⚠️ DeepSeek API token not configured. Opinion generation disabled.")
 except Exception as e:
     deepseek_analyzer = None
     logger.warning(f"DeepSeek analyzer initialization failed: {e}")
@@ -82,16 +82,16 @@ user_db = UserDatabase()
 
 def generate_personality_analysis_task(handle: str):
     """
-    Background task to generate personality analysis and update database.
+    Background task to generate subjective opinion and update database.
     
     This runs asynchronously after the main analysis is complete.
     """
     try:
         if not deepseek_analyzer or not deepseek_analyzer.is_available():
-            logger.info(f"⏭️ Skipping personality analysis for {handle} - DeepSeek not configured")
+            logger.info(f"⏭️ Skipping opinion generation for {handle} - DeepSeek not configured")
             return
         
-        logger.info(f"🧠 Background: Starting personality analysis for {handle}")
+        logger.info(f"💭 Background: Starting opinion generation for {handle}")
         
         # Get analysis from database
         user_data = user_db.get_by_handle(handle)
@@ -106,19 +106,19 @@ def generate_personality_analysis_task(handle: str):
             logger.warning(f"⚠️ Background: No posts found for {handle}")
             return
         
-        # Generate personality analysis
+        # Generate opinion
         personality_analysis = deepseek_analyzer.analyze_personality(posts, user_name)
         
         if personality_analysis:
-            # Update database with personality analysis
+            # Update database with opinion
             user_data['personality_analysis'] = personality_analysis
             user_db.save_analysis(user_data)
-            logger.info(f"✅ Background: Personality analysis saved for {handle}")
+            logger.info(f"✅ Background: Opinion saved for {handle}")
         else:
-            logger.warning(f"⚠️ Background: DeepSeek returned no analysis for {handle}")
+            logger.warning(f"⚠️ Background: DeepSeek returned no opinion for {handle}")
             
     except Exception as e:
-        logger.error(f"❌ Background: Error generating personality analysis for {handle}: {e}")
+        logger.error(f"❌ Background: Error generating opinion for {handle}: {e}")
         import traceback
         logger.debug(f"   Traceback: {traceback.format_exc()}")
 
@@ -405,9 +405,9 @@ def analyze_bluesky_user_sentiment(
         user_db.save_analysis(result.dict())
         logger.info(f"✅ Analysis saved successfully")
         
-        # Launch background task to generate personality analysis
+        # Launch background task to generate opinion
         background_tasks.add_task(generate_personality_analysis_task, handle)
-        logger.info(f"🚀 Launched background task for personality analysis of {handle}")
+        logger.info(f"🚀 Launched background task for opinion generation of {handle}")
         
         logger.info(f"🎉 Analysis complete for '{handle}': {len(analyzed_posts)} posts, {positive_count}+ / {negative_count}-")
         return result

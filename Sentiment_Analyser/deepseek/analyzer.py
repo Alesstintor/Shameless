@@ -70,25 +70,25 @@ class DeepSeekAnalyzer:
     
     def analyze_personality(self, posts: List[Dict], user_name: str = "Usuario") -> Optional[str]:
         """
-        Analyze user personality based on their posts.
+        Generate subjective opinion about a user based on their posts.
         
         Args:
             posts: List of post dictionaries.
             user_name: Name of the user being analyzed.
             
         Returns:
-            Personality analysis text or None if failed.
+            Subjective opinion text or None if failed.
         """
         if not self.is_available():
-            logger.warning("DeepSeek API not available. Skipping personality analysis.")
+            logger.warning("DeepSeek API not available. Skipping opinion generation.")
             return None
         
         if not posts or len(posts) == 0:
-            logger.warning("No posts provided for personality analysis.")
+            logger.warning("No posts provided for opinion generation.")
             return None
         
         try:
-            logger.info(f"🚀 Iniciando análisis de personalidad para: {user_name}")
+            logger.info(f"🚀 Generando opinión sobre: {user_name}")
             logger.info(f"📊 Total de posts disponibles: {len(posts)}")
             
             # Curar posts
@@ -99,18 +99,18 @@ class DeepSeekAnalyzer:
                 return None
             
             # Preparar prompt
-            system_prompt = """Eres un experto en análisis de personalidad en redes sociales.
-Tu trabajo es crear un resumen ultra-breve de la personalidad basado en los posts.
+            system_prompt = """Eres un observador crítico y perspicaz que da opiniones sinceras sobre personas en redes sociales.
+Tu trabajo es dar una opinión subjetiva y directa sobre el tipo de persona o entidad que analizas.
 
 IMPORTANTE: Tu respuesta debe ser MÁXIMO 120 caracteres. Sé extremadamente conciso.
-Usa un tono directo y descriptivo. No uses párrafos ni explicaciones largas.
-Responde en español con una sola frase corta que capture la esencia de la persona."""
+Usa un tono personal, directo y con opinión. Puedes ser crítico, admirativo o neutral según lo que veas.
+No seas neutral si ves algo claro. Da tu opinión real en español con una sola frase corta."""
 
-            user_prompt = f"""Analiza a {user_name} basándote en estos posts:
+            user_prompt = f"""Da tu opinión sincera sobre {user_name} basándote en estos posts:
 
 {curated_text}
 
-Resume su personalidad en UNA frase de máximo 120 caracteres."""
+¿Qué tipo de persona/entidad es? Opina en máximo 120 caracteres."""
 
             # Hacer petición a DeepSeek
             headers = {
@@ -160,11 +160,11 @@ Resume su personalidad en UNA frase de máximo 120 caracteres."""
                 
                 # Asegurar que no exceda 120 caracteres
                 if len(analysis) > 120:
-                    logger.warning(f"⚠️ Análisis excedió 120 caracteres ({len(analysis)}), truncando...")
+                    logger.warning(f"⚠️ Opinión excedió 120 caracteres ({len(analysis)}), truncando...")
                     analysis = analysis[:117] + "..."
                 
-                logger.info(f"✅ Análisis de personalidad completado ({len(analysis)} caracteres)")
-                logger.debug(f"   Contenido: \"{analysis}\"")
+                logger.info(f"✅ Opinión generada ({len(analysis)} caracteres)")
+                logger.debug(f"   Opinión: \"{analysis}\"")
                 
                 # Log de tokens usados si está disponible
                 if "usage" in result:
