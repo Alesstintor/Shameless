@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     TWITTER_API_KEY_SECRET: Optional[str] = None
     TWITTER_ACCESS_TOKEN: Optional[str] = None
     TWITTER_ACCESS_TOKEN_SECRET: Optional[str] = None
+
+    # Bluesky authentication settings (for atproto)
+    BLUESKY_HANDLE: Optional[str] = None
+    BLUESKY_PASSWORD: Optional[str] = None
     
     # ML Model settings
     MODEL_NAME: str = "distilbert-base-uncased-finetuned-sst-2-english"

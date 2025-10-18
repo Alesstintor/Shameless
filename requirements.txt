@@ -8,6 +8,7 @@ numpy==1.26.2
 
 # Web scraping
 tweepy
+atproto
 
 # Machine Learning - Inference only
 transformers==4.36.2
