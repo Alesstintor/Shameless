@@ -46,11 +46,11 @@ except ValueError:
 try:
     sentiment_analyzer = SentimentAnalyzer(
         use_kaggle_model=True,
-        kaggle_model_version="v1.0",
-        device="cpu",
+        kaggle_model_version=settings.MODEL_VERSION,
+        device=settings.MODEL_DEVICE,
         preprocess=True
     )
-    logger.info("Kaggle sentiment model loaded successfully")
+    logger.info(f"Kaggle sentiment model loaded successfully (version: {settings.MODEL_VERSION}, device: {settings.MODEL_DEVICE})")
 except Exception as e:
     sentiment_analyzer = None
     logger.warning(f"Kaggle model not loaded: {e}. Sentiment analysis will be disabled.")

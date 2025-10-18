@@ -1,15 +1,24 @@
 # 🎭 Shameless - User Sentiment Profiler
 
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Hacktoberfest 2025](https://img.shields.io/badge/Hacktoberfest-2025-orange.svg)](https://hacktoberfest.com/)
-[![Kaggle](https://img.shields.io/badge/Kaggle-Model-blue.svg)](https://www.kaggle.com/)
+[![Kaggle Model](https://img.shields.io/badge/Kaggle-Model-20BEFF.svg)](https://www.kaggle.com/models/aleselmaquinas/shameless-sentiment-analyzer)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104.0-009688.svg)](https://fastapi.tiangolo.com/)
+[![Bluesky](https://img.shields.io/badge/Bluesky-Supported-1185FE.svg)](https://bsky.app/)
 
 **¿Qué tipo de persona es este usuario en redes sociales?** 🤔
 
-Shameless analiza el perfil completo de un usuario en Twitter/X y genera un reporte detallado de su sentimiento. Proporciona una URL o nombre de usuario y obtén un análisis completo de personalidad basado en sus publicaciones.
+Shameless analiza el perfil completo de un usuario en **Bluesky** (y Twitter/X) y genera un reporte detallado de su sentimiento. Proporciona un handle de usuario y obtén análisis completo con:
 
-> 🎉 A project for **Hacktoberfest 2025 A Coruña**
+- ✨ Sentimiento general (positivo/negativo)
+- 📊 Estadísticas detalladas (% positivos, confianza promedio)
+- 🌟 Post más positivo y más negativo
+- 🤖 Modelo BERT entrenado en Kaggle (87% accuracy)
+- ⚡ API REST lista para producción
+
+> 🎉 A project for **Hacktoberfest 2025 A Coruña**  
+> 🤖 Pre-trained model available on [Kaggle Models](https://www.kaggle.com/models/aleselmaquinas/shameless-sentiment-analyzer)
 
 ---
 
@@ -31,10 +40,12 @@ Shameless analiza el perfil completo de un usuario en Twitter/X y genera un repo
 ## ✨ Features
 
 ### 🎯 Core Functionality
-- **User Analysis**: Proporciona URL o username → Obtén perfil de sentimiento completo
-- **Smart Scraping**: Recolecta automáticamente tweets del usuario (sin límites de API)
-- **ML-Powered**: Usa modelos entrenados en Kaggle con GPU
-- **Comprehensive Reports**: Genera reportes detallados con insights y visualizaciones
+- **🦋 Bluesky Support**: Analiza usuarios de Bluesky con autenticación nativa
+- **User Analysis**: Proporciona handle → Obtén perfil de sentimiento completo
+- **Smart Scraping**: Recolecta automáticamente posts (usando atproto SDK oficial)
+- **🤖 Pre-trained Model**: Modelo DistilBERT listo para usar desde Kaggle (~270 MB)
+- **ML-Powered**: Inferencia rápida con transformers + PyTorch
+- **REST API**: FastAPI con documentación interactiva (Swagger UI)
 
 ### 📊 Analysis Capabilities
 - **Overall Sentiment**: ¿Es el usuario positivo, negativo o neutral?
@@ -44,12 +55,13 @@ Shameless analiza el perfil completo de un usuario en Twitter/X y genera un repo
 - **Insights**: Descubre patrones y tendencias automáticamente
 
 ### 🤖 Machine Learning
-- **Kaggle Training**: Entrena modelos en Kaggle con GPU gratuita ⚡
-- **Data-Agnostic**: Modelo funciona con tweets, reviews, cualquier texto 📝
-- **Flexible Input**: Acepta 1..n textos de cualquier fuente 🎯
-- **Version Control**: Gestión de versiones de modelos (v1.0, v1.1, v2.0) 📦
-- **BERT-based**: Modelos de última generación (BERT, RoBERTa, DistilBERT) 🤖
-- **Fast Inference**: Batch processing optimizado 🚀
+- **🎯 Pre-trained Model Ready**: DistilBERT fine-tuned on 25k samples (87% accuracy)
+- **📦 One-Command Download**: Disponible en [Kaggle Models](https://www.kaggle.com/models/aleselmaquinas/shameless-sentiment-analyzer)
+- **⚡ Kaggle Training**: GPU-accelerated training with T4/P100 (100% gratuito)
+- **📝 Data-Agnostic**: Funciona con tweets, reviews, posts, cualquier texto
+- **🔄 Version Management**: Gestión de versiones mediante variable de entorno `MODEL_VERSION`
+- **🚀 Fast Inference**: ~100ms por texto en CPU, batch processing optimizado
+- **💾 Compact Size**: ~270 MB (DistilBERT base + fine-tuning)
 
 ### 🎨 User Experience
 - **CLI Interface**: Interfaz de línea de comandos intuitiva
@@ -63,105 +75,220 @@ Shameless analiza el perfil completo de un usuario en Twitter/X y genera un repo
 ## 🏛️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Data Collection Layer                    │
-│  (snscrape) → Twitter/X → Raw Data → Storage (JSON/CSV)    │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   Preprocessing Layer                        │
-│   Text Cleaning → Normalization → Feature Extraction        │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  Machine Learning Layer                      │
-│    BERT/DistilBERT → Sentiment Classification → Results     │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   Analysis & Visualization                   │
-│   Jupyter Notebooks → Charts → Insights → Reports           │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                    Data Collection Layer                      │
+│  Bluesky (atproto) → Posts → Storage (JSON)                 │
+└───────────────────────┬──────────────────────────────────────┘
+                        │
+                        ▼
+┌──────────────────────────────────────────────────────────────┐
+│                   Preprocessing Layer                         │
+│   Text Cleaning → Normalization → Tokenization              │
+└───────────────────────┬──────────────────────────────────────┘
+                        │
+                        ▼
+┌──────────────────────────────────────────────────────────────┐
+│                 Machine Learning Layer                        │
+│  DistilBERT (Kaggle) → Sentiment Classification → Results   │
+│  Model: v1.0 (~270 MB) | Accuracy: 87% | Inference: ~100ms  │
+└───────────────────────┬──────────────────────────────────────┘
+                        │
+                        ▼
+┌──────────────────────────────────────────────────────────────┐
+│                      API Layer (FastAPI)                      │
+│  REST Endpoints → JSON Responses → Interactive Docs         │
+│  /api/analyze/bluesky/user/{handle}                         │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-**Tech Stack (Local - Inference Only):**
-- **Language:** Python 3.9+
-- **ML/NLP:** transformers, torch
+**Tech Stack:**
+- **Language:** Python 3.11+
+- **API Framework:** FastAPI + Uvicorn
+- **ML/NLP:** transformers, torch, DistilBERT
+- **Social APIs:** atproto (Bluesky), tweepy (Twitter)
 - **Data:** pandas, numpy
-- **Config:** pydantic, python-dotenv
-- **Training:** Kaggle (GPU + Jupyter notebooks)
+- **Config:** pydantic-settings, python-dotenv
+- **Training:** Kaggle Notebooks (GPU: T4/P100)
+- **Model Storage:** Kaggle Models
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.9 or higher
-- pip or conda
+- Python 3.11 or higher
+- pip
+- Kaggle account (free)
 
-### 5-Minute Setup
+### ⚡ 5-Minute Setup
+
+#### 1. Clone and Setup Environment
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/Shameless.git
+git clone https://github.com/Alesstintor/Shameless.git
 cd Shameless
 
 # Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # On Windows: .\venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
-
-# Copy environment file
-cp .env.example .env
-
-# Launch Jupyter Notebook
-jupyter notebook Sentiment_Analyser/notebooks/sentiment_analysis.ipynb
+pip install kaggle  # For downloading the model
 ```
 
-### Quick Analysis with Kaggle Model
+#### 2. Download the Pre-trained Model
+
+**Option A: Download from Kaggle Web (Recommended for first time)**
+
+1. Go to: https://www.kaggle.com/models/aleselmaquinas/shameless-sentiment-analyzer
+2. Click **"Download"** button
+3. Extract the downloaded files
+4. Copy the extracted `v1.0` folder to: `Sentiment_Analyser/data/models/v1.0`
+
+**Option B: Using Kaggle CLI**
+
+First, configure Kaggle CLI (one-time setup):
+1. Go to https://www.kaggle.com/settings/account
+2. Click **"Create New Token"** under API section
+3. Download `kaggle.json`
+4. Place it in:
+   - **Windows**: `C:\Users\YOUR_USERNAME\.kaggle\kaggle.json`
+   - **Linux/Mac**: `~/.kaggle/kaggle.json` (then run `chmod 600 ~/.kaggle/kaggle.json`)
+
+Then download the model:
+```bash
+# Navigate to models directory
+cd Sentiment_Analyser/data/models
+
+# Download from Kaggle Models
+# Visit the model page to find the exact instance version
+# https://www.kaggle.com/models/aleselmaquinas/shameless-sentiment-analyzer
+# Then use: kaggle models instances versions download <handle>/<model>/<framework>/<instance>/<version>
+
+# Or simply download manually from the web and extract here
+# The structure should be: models/v1.0/model/ and models/v1.0/tokenizer/
+
+cd ../../..
+```
+
+**Verify the installation:**
+```bash
+# Check structure (replace v1.0 with your MODEL_VERSION)
+ls Sentiment_Analyser/data/models/v1.0/
+# Should show: model/ tokenizer/ config.json metrics.json
+```
+
+> **Note:** The folder name should match your `MODEL_VERSION` setting in `.env`
+
+#### 3. Configure Bluesky Credentials (Optional)
+
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Edit .env and add your Bluesky credentials:
+# BLUESKY_HANDLE=your-handle.bsky.social
+# BLUESKY_PASSWORD=your-app-password
+```
+
+> **Get Bluesky App Password:** Settings → Privacy and Security → App Passwords → Create New
+
+#### 4. Start the API
+
+```bash
+# Start the FastAPI server
+uvicorn Sentiment_Analyser.api.main:app --reload
+```
+
+Visit: **http://localhost:8000/docs** for interactive API documentation
+
+#### 5. Test It!
+
+```bash
+# Analyze sentiment for a Bluesky user
+curl "http://localhost:8000/api/analyze/bluesky/user/jay.bsky.team?limit=10"
+```
+
+### 🐍 Python Usage
 
 ```python
-from sentiment_analyser.models import SentimentAnalyzer
+from Sentiment_Analyser.models import SentimentAnalyzer
 
-# Use Kaggle-trained model (data-agnostic)
-analyzer = SentimentAnalyzer(use_kaggle_model=True, kaggle_model_version="v1.0")
+# Load Kaggle-trained model (version configured in .env)
+analyzer = SentimentAnalyzer(
+    use_kaggle_model=True, 
+    kaggle_model_version="v1.0"  # Or set MODEL_VERSION in .env
+)
 
 # Analyze single text
 result = analyzer.analyze("I love this product!")
-print(result)  # {'sentiment': 'positive', 'score': 0.99}
+print(result)  # {'sentiment': 'positive', 'confidence': 0.9987, 'label': 'LABEL_1'}
 
-# Analyze multiple texts (1..n from any source)
+# Analyze multiple texts (batch processing)
 texts = ["Great experience!", "Terrible service", "Not bad"]
 results = analyzer.analyze_batch(texts)
-
-# Done! 🎉
+for text, result in zip(texts, results):
+    print(f"{text}: {result['sentiment']} ({result['confidence']:.2%})")
 ```
 
+<<<<<<< Updated upstream
 > **Note:** To use Kaggle models, first train them in Kaggle and download locally.
 > See [KAGGLE_WORKFLOW.md](KAGGLE_WORKFLOW.md) for complete instructions.
+=======
+### 🎯 API Endpoints
+
+**Analyze Bluesky User:**
+```bash
+GET /api/analyze/bluesky/user/{handle}?limit=10
+```
+
+**Response:**
+```json
+{
+  "user_name": "Jay Graber",
+  "user_handle": "jay.bsky.team",
+  "user_avatar": "https://cdn.bsky.app/...",
+  "total_analyzed": 25,
+  "positive_count": 18,
+  "negative_count": 7,
+  "average_confidence": 0.8945,
+  "most_positive": { "text": "...", "confidence": 0.9987 },
+  "most_negative": { "text": "...", "confidence": 0.8654 },
+  "posts": [...]
+}
+```
+>>>>>>> Stashed changes
 
 ---
 
 ## 📦 Installation
 
-### Standard Installation
+### Complete Setup (Production)
 
 ```bash
-# Clone repository
-git clone https://github.com/yourusername/Shameless.git
+# 1. Clone and create environment
+git clone https://github.com/Alesstintor/Shameless.git
 cd Shameless
-
-# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: .\venv\Scripts\activate
 
-# Install production dependencies
+# 2. Install dependencies
 pip install -r requirements.txt
+pip install kaggle
+
+# 3. Download pre-trained model (~270 MB)
+# Go to: https://www.kaggle.com/models/aleselmaquinas/shameless-sentiment-analyzer
+# Click "Download" and extract to: Sentiment_Analyser/data/models/v1.0
+# Note: Folder name must match MODEL_VERSION in .env (default: v1.0)
+
+# 4. Configure environment
+cp .env.example .env
+# Edit .env with your Bluesky credentials and MODEL_VERSION
+
+# 5. Start API
+uvicorn Sentiment_Analyser.api.main:app --reload
 ```
 
 ### Development Installation
@@ -179,25 +306,86 @@ pytest tests/ -v --cov
 
 ### Configuration
 
-Create a `.env` file from the example:
-
-```bash
-cp .env.example .env
-```
-
 Edit `.env` with your settings:
 
 ```env
-# Model configuration
-MODEL_NAME=distilbert-base-uncased-finetuned-sst-2-english
-MODEL_DEVICE=cpu  # or 'cuda' for GPU
+# Bluesky Credentials (Required for API)
+BLUESKY_HANDLE=your-handle.bsky.social
+BLUESKY_PASSWORD=your-app-password  # From Settings → App Passwords
 
-# Scraper settings
-SCRAPER_RATE_LIMIT=1.0
+# Model Configuration
+MODEL_NAME=distilbert-base-uncased-finetuned-sst-2-english
+MODEL_VERSION=v1.0  # Kaggle model version (change to v1.1, v2.0 when available)
+MODEL_DEVICE=cpu  # or 'cuda' if you have GPU
+MODEL_BATCH_SIZE=32
+
+# API Settings
+API_HOST=0.0.0.0
+API_PORT=8000
 
 # Logging
 LOG_LEVEL=INFO
 ```
+
+### Troubleshooting
+
+**Error: "Model not found at data/models/v1.0/model"**
+
+The model files are missing. Download them:
+1. Go to: https://www.kaggle.com/models/aleselmaquinas/shameless-sentiment-analyzer
+2. Click **"Download"** button (you'll need a Kaggle account)
+3. Extract the downloaded archive
+4. Copy the folder to match your `MODEL_VERSION` in `.env`
+   - If `MODEL_VERSION=v1.0`, copy to: `Sentiment_Analyser/data/models/v1.0`
+   - If `MODEL_VERSION=v2.0`, copy to: `Sentiment_Analyser/data/models/v2.0`
+
+Expected structure (for v1.0):
+```
+Sentiment_Analyser/data/models/v1.0/
+├── model/
+│   ├── config.json
+│   └── model.safetensors
+├── tokenizer/
+│   ├── tokenizer.json
+│   ├── vocab.txt
+│   ├── tokenizer_config.json
+│   └── special_tokens_map.json
+├── config.json
+└── metrics.json
+```
+
+> **Tip:** Always ensure the folder name matches the `MODEL_VERSION` variable in your `.env` file
+
+**Error: "Bluesky integration is not configured"**
+- Add your credentials to `.env`:
+  ```
+  BLUESKY_HANDLE=your-handle.bsky.social
+  BLUESKY_PASSWORD=your-app-password
+  ```
+- Get App Password: Bluesky Settings → Privacy and Security → App Passwords
+
+**Slow inference on CPU?**
+- Use GPU if available: Set `MODEL_DEVICE=cuda` in `.env`
+- Install CUDA-enabled PyTorch:
+  ```bash
+  pip install torch --index-url https://download.pytorch.org/whl/cu118
+  ```
+
+**How to upgrade to a new model version?**
+
+When a new model version is released (e.g., v2.0):
+1. Download the new version from Kaggle Models
+2. Extract to: `Sentiment_Analyser/data/models/v2.0`
+3. Update your `.env`:
+   ```env
+   MODEL_VERSION=v2.0
+   ```
+4. Restart the API:
+   ```bash
+   uvicorn Sentiment_Analyser.api.main:app --reload
+   ```
+
+You can keep multiple versions and switch between them by changing `MODEL_VERSION`!
 
 ---
 

@@ -185,67 +185,102 @@ async function loadStoredUsers() {
 
 loadStoredUsers();
 
-// Search handling - mock behavior: add new user at the front
+// Search handling - uses sentiment analysis endpoint
 searchForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const q = searchInput.value && searchInput.value.trim();
   if (!q) return;
 
   const handle = q.replace(/^@/, '');
-  // call backend to fetch via Bluesky endpoint (server side will proxy or use external API)
+  
+  // Show loading state
+  searchInput.disabled = true;
+  searchInput.placeholder = 'Analizando...';
+  
   try {
-    const res = await fetch(`/api/bluesky/user/${encodeURIComponent(handle)}?limit=10`);
+    // Use sentiment analysis endpoint
+    const res = await fetch(`/api/analyze/bluesky/user/${encodeURIComponent(handle)}?limit=10`);
     if (!res.ok) throw new Error('Server returned ' + res.status);
     const data = await res.json();
 
-    // If the Bluesky endpoint returns a list of posts (array), map it to our UI structure
-    let mapped;
-    if (Array.isArray(data)) {
-      const posts = data;
-      mapped = {
-        avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(handle)}`,
-        username: handle,
-        name: (posts.length && (posts[0].user || posts[0].username)) || handle,
-        emotions: { Joy: 0.5, Sadness: 0.2, Anger: 0.1, Fear: 0.1, Surprise: 0.1 },
-        tweets: posts.map(p => p.content || p.text || String(p)),
-        words: [],
-        summary: ''
-      };
-    } else {
-      // Fallback mapping for object-shaped payloads
-      mapped = {
-        avatar: data.avatar || data.profile_image_url || `https://i.pravatar.cc/150?u=${encodeURIComponent(handle)}`,
-        username: data.handle || handle,
-        name: data.name || data.display_name || handle,
-        emotions: data.emotions || data.sentiment_distribution || { Joy: 0.5, Sadness: 0.2, Anger: 0.1, Fear: 0.1, Surprise: 0.1 },
-        tweets: data.tweets || data.posts || [],
-        words: data.words || data.top_words || [],
-        summary: data.summary || data.description || ''
-      };
-    }
+    // Map sentiment analysis result to UI structure
+    // Calculate emotion distribution from sentiment analysis
+    const totalPosts = data.total_analyzed || 1;
+    const positiveRatio = (data.positive_count || 0) / totalPosts;
+    const negativeRatio = (data.negative_count || 0) / totalPosts;
+    const neutralRatio = 1 - positiveRatio - negativeRatio;
+    
+    // Map to emotion categories (adjust as needed)
+    const emotions = {
+      Joy: positiveRatio * 0.6,          // Most positive → Joy
+      Surprise: positiveRatio * 0.4,     // Some positive → Surprise
+      Sadness: negativeRatio * 0.5,      // Most negative → Sadness
+      Anger: negativeRatio * 0.3,        // Some negative → Anger
+      Fear: negativeRatio * 0.2 + neutralRatio  // Remaining negative + neutral
+    };
+    
+    const mapped = {
+      avatar: data.user_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(handle)}`,
+      username: data.user_handle || handle,
+      name: data.user_name || handle,
+      emotions: emotions,
+      tweets: (data.posts || []).map(p => p.text || p.content || '').slice(0, 10),
+      words: extractTopWords(data.posts || []),
+      summary: generateSummary(data)
+    };
 
     // update local list and re-render
     USERS.unshift(mapped);
     USERS = USERS.slice(0, 10);
     renderGrid(USERS);
+    
+    console.log('✅ Análisis completado para', handle);
   } catch (e) {
-    console.warn('Failed to fetch & store user from server; falling back to in-memory mock.', e);
-    const newUser = {
-      avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(q)}`,
-      username: handle,
-      name: q,
-      emotions: { Joy: Math.random(), Sadness: Math.random(), Anger: Math.random(), Fear: Math.random(), Surprise: Math.random() },
-      tweets: [`Tweet generado para ${q}`],
-      words: ['mock', 'data'],
-      summary: 'Perfil agregado desde la búsqueda.'
-    };
-    USERS.unshift(newUser);
-    USERS = USERS.slice(0, 10); // keep last 10
-    renderGrid(USERS);
+    console.error('Failed to fetch sentiment analysis:', e);
+    alert(`Error al analizar @${handle}. Por favor intenta de nuevo.`);
   } finally {
+    searchInput.disabled = false;
+    searchInput.placeholder = 'Buscar usuario (ej: elonmusk)';
     searchInput.value = '';
   }
 });
+
+// Helper function to extract top words from posts
+function extractTopWords(posts) {
+  const words = {};
+  posts.forEach(post => {
+    const text = post.text || post.content || '';
+    const tokens = text.toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 3); // words longer than 3 chars
+    
+    tokens.forEach(word => {
+      words[word] = (words[word] || 0) + 1;
+    });
+  });
+  
+  return Object.entries(words)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([word]) => word);
+}
+
+// Helper function to generate summary from sentiment data
+function generateSummary(data) {
+  const total = data.total_analyzed || 0;
+  const positive = data.positive_count || 0;
+  const negative = data.negative_count || 0;
+  const avgConf = (data.average_confidence || 0) * 100;
+  
+  let sentiment = 'neutral';
+  if (positive > negative * 1.5) sentiment = 'muy positivo';
+  else if (positive > negative) sentiment = 'positivo';
+  else if (negative > positive * 1.5) sentiment = 'muy negativo';
+  else if (negative > positive) sentiment = 'negativo';
+  
+  return `Analizados ${total} posts. Sentimiento general: ${sentiment}. Confianza promedio: ${avgConf.toFixed(1)}%.`;
+}
 
 // Theme toggle
 function setLightMode(on) {

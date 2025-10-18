@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     
     # ML Model settings
     MODEL_NAME: str = "distilbert-base-uncased-finetuned-sst-2-english"
+    MODEL_VERSION: str = "v1.0"  # Kaggle model version (v1.0, v1.1, v2.0, etc.)
     MODEL_MAX_LENGTH: int = 512
     MODEL_BATCH_SIZE: int = 32
     MODEL_DEVICE: str = "cpu"  # or "cuda" if GPU available

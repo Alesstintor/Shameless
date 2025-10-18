@@ -47,10 +47,16 @@ def main():
         remove_mentions=False,
         remove_hashtags=False
     )
-    analyzer = SentimentAnalyzer(preprocess=False)
+    # Use Kaggle model with version from settings
+    analyzer = SentimentAnalyzer(
+        use_kaggle_model=True,
+        kaggle_model_version=settings.MODEL_VERSION,
+        device=settings.MODEL_DEVICE,
+        preprocess=False
+    )
     storage = DataStorage(settings.RAW_DATA_DIR)
     
-    print("✅ Components initialized\n")
+    print(f"✅ Components initialized (Model: {settings.MODEL_VERSION}, Device: {settings.MODEL_DEVICE})\n")
     
     # Step 2: Collect tweets
     print(f"🐦 Collecting tweets for '{QUERY}'...")
