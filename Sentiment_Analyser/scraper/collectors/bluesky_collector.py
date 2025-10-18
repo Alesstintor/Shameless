@@ -91,10 +91,10 @@ class BlueskyCollector:
         logger.info(f"Collecting posts for Bluesky user: {handle}")
 
         try:
-            # The official method to get a user's feed is get_author_feed
-            response = self.client.app.bsky.feed.get_author_feed(
+            params = models.AppBskyFeedGetAuthorFeed.Params(
                 actor=handle, limit=limit
             )
+            response = self.client.app.bsky.feed.get_author_feed(params)
 
             if not response or not response.feed:
                 logger.warning(f"Could not find any posts for user {handle}.")
