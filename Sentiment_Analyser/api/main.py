@@ -49,7 +49,7 @@ def read_root():
 
 
 @app.get("/api/scrape/query", response_model=List[Tweet])
-async def scrape_by_query(
+def scrape_by_query(
     q: str = Query(..., description="The search query string."),
     limit: int = Query(100, ge=1, le=1000, description="Number of tweets to return."),
     since: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)."),
@@ -60,15 +60,14 @@ async def scrape_by_query(
     """
     logger.info(f"API call: Scrape by query='{q}' with limit={limit}")
     try:
-        tweets = [tweet async for tweet in tweets_iterator]
+        # Note: 'since' and 'until' are ignored by the current tweepy implementation
+        tweets_iterator = collector.search(query=q, limit=limit)
+        tweets = list(tweets_iterator)
         return tweets
-    except Exception as e:
-        logger.error(f"Error scraping query '{q}': {e}")
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
 
 
 @app.get("/api/scrape/user/{username}", response_model=List[Tweet])
-async def scrape_by_user(
+def scrape_by_user(
     username: str,
     limit: int = Query(100, ge=1, le=1000, description="Number of tweets to return."),
 ):
@@ -78,7 +77,7 @@ async def scrape_by_user(
     logger.info(f"API call: Scrape user='{username}' with limit={limit}")
     try:
         tweets_iterator = collector.get_user_tweets(username=username, limit=limit)
-        tweets = [tweet async for tweet in tweets_iterator]
+        tweets = list(tweets_iterator)
         if not tweets:
             raise HTTPException(status_code=404, detail=f"User '{username}' not found or has no public tweets.")
         return tweets
