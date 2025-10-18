@@ -22,11 +22,12 @@ class Settings(BaseSettings):
     RAW_DATA_DIR: Path = DATA_DIR / "raw"
     PROCESSED_DATA_DIR: Path = DATA_DIR / "processed"
     
-    # Twitter authentication settings (for twikit)
-    # IMPORTANT: These must be set in your .env file
-    TWITTER_USERNAME: Optional[str] = None
-    TWITTER_EMAIL: Optional[str] = None
-    TWITTER_PASSWORD: Optional[str] = None
+    # Twitter API v2 authentication settings (for tweepy)
+    # These must be set in your .env file once you get them from the developer portal
+    TWITTER_API_KEY: Optional[str] = None
+    TWITTER_API_KEY_SECRET: Optional[str] = None
+    TWITTER_ACCESS_TOKEN: Optional[str] = None
+    TWITTER_ACCESS_TOKEN_SECRET: Optional[str] = None
     
     # ML Model settings
     MODEL_NAME: str = "distilbert-base-uncased-finetuned-sst-2-english"

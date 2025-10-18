@@ -1,17 +1,15 @@
-"""
-Twitter data collector using twikit.
+'''
+Twitter data collector using tweepy and the official Twitter API v2.
 
-Provides functionality to scrape tweets using cookie-based authentication.
-"""
+Provides functionality to fetch tweets using developer credentials.
+'''
 
 import logging
-import asyncio
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import AsyncGenerator, List, Optional
+from typing import Generator, List, Optional
 
-from twikit import Client
-from twikit.errors import TwitterException
+import tweepy
 
 from Sentiment_Analyser.config import get_settings
 
@@ -21,7 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Tweet:
     """Data class representing a scraped tweet. Kept consistent for downstream compatibility."""
-
+    
     id: str
     content: str
     user: str
@@ -34,149 +32,156 @@ class Tweet:
     hashtags: List[str]
     mentions: List[str]
     language: Optional[str] = None
-
+    
     def to_dict(self) -> dict:
         """Convert tweet to dictionary."""
         data = asdict(self)
-        data["date"] = self.date.isoformat()
+        data['date'] = self.date.isoformat()
         return data
 
 
 class TwitterCollector:
     """
-    Collector for Twitter data using twikit.
-    Handles authentication and provides async methods for data collection.
+    Collector for Twitter data using tweepy.
+    Handles authentication with Twitter API v2 credentials.
     """
-
+    
     def __init__(self):
-        """Initialize Twitter collector with twikit client."""
-        self.settings = get_settings()
-        self.client = Client("en-US")
-        self._logged_in = False
+        """Initialize Twitter collector with tweepy client."""
+        settings = get_settings()
+        api_key = settings.TWITTER_API_KEY
+        api_secret = settings.TWITTER_API_KEY_SECRET
+        access_token = settings.TWITTER_ACCESS_TOKEN
+        access_token_secret = settings.TWITTER_ACCESS_TOKEN_SECRET
 
-    async def _login_if_needed(self):
-        """Logs in to the client using credentials from settings if not already logged in."""
-        if self._logged_in:
-            return
-
-        username = self.settings.TWITTER_USERNAME
-        email = self.settings.TWITTER_EMAIL
-        password = self.settings.TWITTER_PASSWORD
-
-        if not (username and email and password):
-            raise ValueError(
-                "Twitter credentials (TWITTER_USERNAME, TWITTER_EMAIL, TWITTER_PASSWORD) are not fully set in settings."
-            )
+        if not all([api_key, api_secret, access_token, access_token_secret]):
+            raise ValueError("All Twitter API credentials must be set in settings.")
 
         try:
-            logger.info(f"Attempting to log in to Twitter as '{username}'...")
-            await self.client.login(
-                auth_info_1=username,
-                auth_info_2=email,
-                password=password
+            logger.info("Authenticating with Twitter API v2...")
+            self.client = tweepy.Client(
+                consumer_key=api_key,
+                consumer_secret=api_secret,
+                access_token=access_token,
+                access_token_secret=access_token_secret
             )
-            self._logged_in = True
-            logger.info("Successfully logged in.")
-        except TwitterException as e:
-            logger.error(f"Failed to log in with credentials: {e}")
+            logger.info("Successfully authenticated.")
+        except Exception as e:
+            logger.error(f"Failed to authenticate with tweepy: {e}")
             raise
 
-    def _parse_tweet(self, twikit_tweet) -> Tweet:
+    def _parse_tweet(self, tweepy_tweet: tweepy.Tweet, users: dict) -> Tweet:
         """
-        Parse a twikit tweet object to our internal Tweet dataclass.
+        Parse a tweepy.Tweet object to our internal Tweet dataclass.
 
         Args:
-            twikit_tweet: Raw tweet object from twikit.
+            tweepy_tweet: Raw tweet object from tweepy.
+            users: A dictionary mapping user IDs to user objects from the response includes.
 
         Returns:
             Parsed Tweet object.
         """
-        user_mentions = [
-            mention["screen_name"] for mention in twikit_tweet.user_mentions
-        ]
-        # The URL can be constructed from the username and tweet id
-        tweet_url = f"https://twitter.com/{twikit_tweet.user.screen_name}/status/{twikit_tweet.id}"
+        author_info = users.get(tweepy_tweet.author_id, {})
+        entities = tweepy_tweet.entities or {}
+        hashtags = [tag['tag'] for tag in entities.get('hashtags', [])]
+        mentions = [mention['username'] for mention in entities.get('mentions', [])]
+        
+        # Construct URL
+        username = author_info.get('username', 'unknown')
+        tweet_url = f"https://twitter.com/{username}/status/{tweepy_tweet.id}"
 
         return Tweet(
-            id=twikit_tweet.id,
-            content=twikit_tweet.text,
-            user=twikit_tweet.user.name,
-            username=twikit_tweet.user.screen_name,
-            date=twikit_tweet.created_at,
-            likes=twikit_tweet.favorite_count,
-            retweets=twikit_tweet.retweet_count,
-            replies=twikit_tweet.reply_count,
+            id=str(tweepy_tweet.id),
+            content=tweepy_tweet.text,
+            user=author_info.get('name', 'Unknown User'),
+            username=username,
+            date=tweepy_tweet.created_at,
+            likes=tweepy_tweet.public_metrics.get('like_count', 0),
+            retweets=tweepy_tweet.public_metrics.get('retweet_count', 0),
+            replies=tweepy_tweet.public_metrics.get('reply_count', 0),
             url=tweet_url,
-            hashtags=twikit_tweet.hashtags,
-            mentions=user_mentions,
-            language=twikit_tweet.lang,
+            hashtags=hashtags,
+            mentions=mentions,
+            language=tweepy_tweet.lang
         )
 
-    async def search(
-        self,
-        query: str,
-        limit: int = 100,
-        since: Optional[
-            str
-        ] = None,  # Note: twikit search doesn't directly support date ranges
-        until: Optional[str] = None,
-    ) -> AsyncGenerator[Tweet, None]:
+    def search(
+        self, query: str, limit: int = 100
+    ) -> Generator[Tweet, None, None]:
         """
-        Search for tweets matching the query.
+        Search for recent tweets matching the query (last 7 days for free tier).
 
         Args:
             query: Search query.
-            limit: Maximum number of tweets to collect.
+            limit: Maximum number of tweets to collect (10-100).
 
         Yields:
             Tweet objects.
         """
-        await self._login_if_needed()
         logger.info(f"Starting tweet search with query: '{query}'")
+        limit = max(10, min(100, limit))  # API v2 requires limit between 10 and 100
 
-        count = 0
         try:
-            async for tweet_obj in self.client.search_tweet(query, "Latest"):
-                if count >= limit:
-                    break
-                yield self._parse_tweet(tweet_obj)
-                count += 1
-        except TwitterException as e:
+            response = self.client.search_recent_tweets(
+                query=query,
+                max_results=limit,
+                tweet_fields=['created_at', 'public_metrics', 'lang', 'entities'],
+                expansions=['author_id']
+            )
+
+            if not response.data:
+                logger.warning("Search returned no tweets.")
+                return
+
+            users = {user["id"]: user for user in response.includes.get('users', [])}
+            for tweet_obj in response.data:
+                yield self._parse_tweet(tweet_obj, users)
+
+        except tweepy.errors.TweepyException as e:
             logger.error(f"An error occurred during tweet search: {e}")
             raise
 
-        logger.info(f"Search completed. Total tweets collected: {count}")
+        logger.info(f"Search completed.")
 
-    async def get_user_tweets(
+    def get_user_tweets(
         self, username: str, limit: int = 100
-    ) -> AsyncGenerator[Tweet, None]:
+    ) -> Generator[Tweet, None, None]:
         """
-        Get tweets from a specific user.
+        Get recent tweets from a specific user.
 
         Args:
             username: Twitter username (without @).
-            limit: Maximum number of tweets to collect.
+            limit: Maximum number of tweets to collect (5-100).
 
         Yields:
             Tweet objects.
         """
-        await self._login_if_needed()
         logger.info(f"Collecting tweets from user: @{username}")
+        limit = max(5, min(100, limit))  # API v2 requires limit between 5 and 100
 
         try:
-            # First, get the user ID from the screen name
-            user = await self.client.get_user_by_screen_name(username)
-            if not user:
+            user_response = self.client.get_user(username=username)
+            if not user_response.data:
                 raise ValueError(f"User with username '{username}' not found.")
+            user_id = user_response.data.id
 
-            count = 0
-            async for tweet_obj in self.client.get_user_tweets(user.id, "Tweets"):
-                if count >= limit:
-                    break
-                yield self._parse_tweet(tweet_obj)
-                count += 1
-        except TwitterException as e:
+            response = self.client.get_users_tweets(
+                id=user_id,
+                max_results=limit,
+                tweet_fields=['created_at', 'public_metrics', 'lang', 'entities'],
+                expansions=['author_id']
+            )
+
+            if not response.data:
+                logger.warning(f"User @{username} has no recent tweets.")
+                return
+
+            users = {user["id"]: user for user in response.includes.get('users', [])}
+            for tweet_obj in response.data:
+                yield self._parse_tweet(tweet_obj, users)
+
+        except tweepy.errors.TweepyException as e:
             logger.error(f"An error occurred collecting user tweets: {e}")
             raise
 
-        logger.info(f"Collection completed for @{username}. Total tweets: {count}")
+        logger.info(f"Collection completed for @{username}.")
