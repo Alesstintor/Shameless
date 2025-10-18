@@ -50,8 +50,7 @@ async def scrape_by_query(
     """
     logger.info(f"API call: Scrape by query='{q}' with limit={limit}")
     try:
-        tweets_iterator = collector.search(query=q, limit=limit, since=since, until=until)
-        tweets = list(tweets_iterator)
+        tweets = [tweet async for tweet in tweets_iterator]
         return tweets
     except Exception as e:
         logger.error(f"Error scraping query '{q}': {e}")
@@ -69,7 +68,7 @@ async def scrape_by_user(
     logger.info(f"API call: Scrape user='{username}' with limit={limit}")
     try:
         tweets_iterator = collector.get_user_tweets(username=username, limit=limit)
-        tweets = list(tweets_iterator)
+        tweets = [tweet async for tweet in tweets_iterator]
         if not tweets:
             raise HTTPException(status_code=404, detail=f"User '{username}' not found or has no public tweets.")
         return tweets
