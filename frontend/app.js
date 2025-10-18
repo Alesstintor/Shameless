@@ -100,6 +100,15 @@ async function loadPersonalityAnalysis(handle, attempts = 0) {
       detailSummary.textContent = data.personality_analysis;
       detailSummary.classList.add('personality-analysis');
       personalityLoader.classList.add('hidden');
+      
+      // Actualizar el objeto del usuario en USERS para que no vuelva a hacer polling
+      const userIndex = USERS.findIndex(u => u.username === handle);
+      if (userIndex !== -1) {
+        USERS[userIndex].personality_analysis = data.personality_analysis;
+        USERS[userIndex].is_new_analysis = false; // Ya no es nuevo
+        console.log('✅ Análisis guardado en caché local');
+      }
+      
       console.log('✅ Análisis de personalidad cargado desde BD');
     } else if (attempts < MAX_ATTEMPTS - 1) {
       console.log(`⏳ Análisis aún no disponible, reintentando en 5 segundos...`);
@@ -128,15 +137,20 @@ function openDetail(idx) {
     detailSummary.textContent = user.personality_analysis;
     detailSummary.classList.add('personality-analysis');
     console.log('✅ Mostrando análisis de personalidad desde caché');
-  } else {
-    // Mostrar resumen base y empezar a verificar si ya se generó
+  } else if (user.is_new_analysis) {
+    // Es un análisis NUEVO → iniciar polling
     detailSummary.textContent = user.summary;
     detailSummary.classList.remove('personality-analysis');
     
-    // Intentar cargar análisis de personalidad (puede estar generándose)
+    console.log('🆕 Análisis nuevo detectado, iniciando polling...');
     if (user.username) {
       loadPersonalityAnalysis(user.username);
     }
+  } else {
+    // Es un análisis VIEJO sin personality_analysis → solo mostrar resumen base
+    detailSummary.textContent = user.summary;
+    detailSummary.classList.remove('personality-analysis');
+    console.log('📜 Análisis antiguo sin personality_analysis, mostrando solo resumen base');
   }
   
   // Show most positive post
@@ -305,28 +319,29 @@ searchForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const q = searchInput.value && searchInput.value.trim();
   if (!q) return;
-
-  const handle = q.replace(/^@/, '');
   
-  // Show loading state
   searchInput.disabled = true;
   searchInput.placeholder = 'Analizando...';
   
+  const handle = q.replace('@', '');
+  
   try {
-    // Use sentiment analysis endpoint
+    console.log(`Analyzing sentiment for Bluesky user: ${handle}`);
     const res = await fetch(`/api/analyze/bluesky/user/${encodeURIComponent(handle)}?limit=25`);
-    if (!res.ok) throw new Error('Server returned ' + res.status);
-    const analysis = await res.json();
-
-    // Map to UI format using shared function
-    const mapped = mapAnalysisToUI(analysis);
-
-    // Update local list and re-render
-    USERS.unshift(mapped);
-    USERS = USERS.slice(0, 10);
+    if (!res.ok) throw new Error('Analysis failed with status ' + res.status);
+    const data = await res.json();
+    
+    // Map result to UI format
+    const user = mapAnalysisToUI(data);
+    
+    // Marcar como nuevo análisis (para activar polling)
+    user.is_new_analysis = true;
+    
+    // Add to front of list and re-render
+    USERS.unshift(user);
     renderGrid(USERS);
     
-    console.log('✅ Análisis completado para', handle);
+    console.log(`✅ Analysis complete for ${handle}`);
   } catch (e) {
     console.error('Failed to fetch sentiment analysis:', e);
     alert(`Error al analizar @${handle}. Por favor intenta de nuevo.`);

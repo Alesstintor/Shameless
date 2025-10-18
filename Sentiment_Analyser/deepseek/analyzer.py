@@ -99,22 +99,18 @@ class DeepSeekAnalyzer:
                 return None
             
             # Preparar prompt
-            system_prompt = """Eres un experto psicólogo que analiza personalidades a través del contenido de redes sociales. 
-Tu trabajo es crear un perfil de personalidad basado en los posts que te proporcionen.
+            system_prompt = """Eres un experto en análisis de personalidad en redes sociales.
+Tu trabajo es crear un resumen ultra-breve de la personalidad basado en los posts.
 
-Debes responder en español con un análisis de 3-4 párrafos que incluya:
-1. Rasgos de personalidad principales
-2. Estilo de comunicación y temas de interés
-3. Patrones emocionales y valores que se reflejan
-4. Una conclusión sobre su presencia en redes sociales
+IMPORTANTE: Tu respuesta debe ser MÁXIMO 120 caracteres. Sé extremadamente conciso.
+Usa un tono directo y descriptivo. No uses párrafos ni explicaciones largas.
+Responde en español con una sola frase corta que capture la esencia de la persona."""
 
-Sé directo, profesional y empático. Usa un tono cálido pero analítico."""
-
-            user_prompt = f"""Analiza la personalidad de {user_name} basándote en estos posts de Bluesky:
+            user_prompt = f"""Analiza a {user_name} basándote en estos posts:
 
 {curated_text}
 
-Proporciona un análisis de personalidad completo y perspicaz."""
+Resume su personalidad en UNA frase de máximo 120 caracteres."""
 
             # Hacer petición a DeepSeek
             headers = {
@@ -129,14 +125,14 @@ Proporciona un análisis de personalidad completo y perspicaz."""
                     {"role": "user", "content": user_prompt}
                 ],
                 "temperature": 0.7,
-                "max_tokens": 800,
+                "max_tokens": 50,  # 120 caracteres ≈ 30-40 tokens
                 "stream": False
             }
             
             logger.info(f"🤖 Enviando petición a DeepSeek API...")
             logger.debug(f"   API URL: {self.api_url}")
             logger.debug(f"   Modelo: {self.model}")
-            logger.debug(f"   Temperatura: 0.7, Max tokens: 800")
+            logger.debug(f"   Temperatura: 0.7, Max tokens: 50 (máx 120 caracteres)")
             logger.debug(f"   Tamaño del prompt: {len(user_prompt)} caracteres")
             
             import time
@@ -160,9 +156,15 @@ Proporciona un análisis de personalidad completo y perspicaz."""
             
             # Extraer análisis del response
             if "choices" in result and len(result["choices"]) > 0:
-                analysis = result["choices"][0]["message"]["content"]
+                analysis = result["choices"][0]["message"]["content"].strip()
+                
+                # Asegurar que no exceda 120 caracteres
+                if len(analysis) > 120:
+                    logger.warning(f"⚠️ Análisis excedió 120 caracteres ({len(analysis)}), truncando...")
+                    analysis = analysis[:117] + "..."
+                
                 logger.info(f"✅ Análisis de personalidad completado ({len(analysis)} caracteres)")
-                logger.debug(f"   Primeros 200 chars: {analysis[:200]}...")
+                logger.debug(f"   Contenido: \"{analysis}\"")
                 
                 # Log de tokens usados si está disponible
                 if "usage" in result:
