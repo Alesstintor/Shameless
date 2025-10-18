@@ -17,6 +17,10 @@ from Sentiment_Analyser.scraper.schemas import Tweet
 from Sentiment_Analyser.scraper.collectors.twitter_collector import TwitterCollector
 from Sentiment_Analyser.scraper.collectors.bluesky_collector import BlueskyCollector
 from Sentiment_Analyser.models import SentimentAnalyzer
+import requests
+import json
+from pathlib import Path
+from fastapi import Response
 
 # Initialize logger and settings
 logger = logging.getLogger(__name__)
@@ -60,6 +64,30 @@ app = FastAPI(
 
 # Mount the frontend static files (adjust path relative to this file)
 app.mount("/static", StaticFiles(directory="./frontend"), name="static")
+
+
+# --- Simple JSON-backed storage for external API results ---
+STORE_PATH = Path(settings.PROCESSED_DATA_DIR) / "users.json"
+
+
+def read_store() -> dict:
+    try:
+        if not STORE_PATH.exists():
+            return {}
+        with STORE_PATH.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.warning(f"Failed to read store {STORE_PATH}: {e}")
+        return {}
+
+
+def write_store(data: dict):
+    try:
+        STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with STORE_PATH.open("w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"Failed to write store {STORE_PATH}: {e}")
 
 
 # --- Response Models ---
@@ -173,6 +201,54 @@ def scrape_bluesky_user(
     except Exception as e:
         logger.error(f"Error scraping Bluesky user '{handle}': {e}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+
+
+
+@app.get("/api/external/user/{handle}")
+def proxy_external_user(handle: str, response: Response):
+    """
+    Proxy to an external REST API that returns the complete sentiment analysis
+    for a given handle. The external JSON is stored in
+    Sentiment_Analyser/data/processed/users.json under the key `{handle}`.
+    """
+    if not settings.EXTERNAL_API_URL:
+        raise HTTPException(status_code=500, detail="EXTERNAL_API_URL is not configured in settings.")
+
+    # Build URL - allow the external API to accept either /user/{handle} or /{handle}
+    base = settings.EXTERNAL_API_URL.rstrip("/")
+    # First try common pattern: /user/{handle}
+    candidates = [f"{base}/user/{handle}", f"{base}/{handle}", f"{base}?handle={handle}"]
+
+    headers = {}
+    if settings.EXTERNAL_API_KEY:
+        headers["Authorization"] = f"Bearer {settings.EXTERNAL_API_KEY}"
+
+    last_err = None
+    for url in candidates:
+        try:
+            logger.info(f"Proxying external request to {url}")
+            r = requests.get(url, headers=headers, timeout=settings.EXTERNAL_API_TIMEOUT)
+            if r.status_code == 200:
+                payload = r.json()
+
+                # Persist in JSON store under the handle key
+                store = read_store()
+                store[handle] = payload
+                write_store(store)
+
+                # Return the payload as-is to the frontend
+                response.headers["Content-Type"] = "application/json; charset=utf-8"
+                return JSONResponse(content=payload)
+            else:
+                last_err = f"Status {r.status_code} from {url}"
+                logger.warning(last_err)
+        except requests.RequestException as e:
+            last_err = str(e)
+            logger.warning(f"Request to {url} failed: {e}")
+
+    # If we reach here, all candidates failed
+    logger.error(f"All external proxy attempts failed for handle={handle}: {last_err}")
+    raise HTTPException(status_code=502, detail=f"Failed to fetch external data for '{handle}': {last_err}")
 
 
 # --- Sentiment Analysis Endpoints ---

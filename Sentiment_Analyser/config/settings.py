@@ -60,6 +60,14 @@ class Settings(BaseSettings):
     CACHE_TTL: int = 3600  # seconds
     REDIS_URL: Optional[str] = None
     
+    # External REST API used as data source for frontend (proxy via backend)
+    # Example: https://api.example.com/user/{handle}
+    EXTERNAL_API_URL: Optional[str] = None
+    # Optional API key/token for the external API (if required)
+    EXTERNAL_API_KEY: Optional[str] = None
+    # HTTP timeout for external API requests (seconds)
+    EXTERNAL_API_TIMEOUT: int = 10
+    
     # Security
     SECRET_KEY: str = "changeme-in-production"
     API_KEY: Optional[str] = None
