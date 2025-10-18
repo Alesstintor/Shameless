@@ -142,7 +142,7 @@ results = analyzer.analyze_batch(texts)
 # Done! 🎉
 ```
 
-> **Note:** To use Kaggle models, first train them in Kaggle and download locally.  
+> **Note:** To use Kaggle models, first train them in Kaggle and download locally.
 > See [KAGGLE_WORKFLOW.md](KAGGLE_WORKFLOW.md) for complete instructions.
 
 ---
@@ -435,15 +435,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 - **HuggingFace** for amazing transformer models
 - **snscrape** for reliable social media scraping
 - All contributors who make this project better
-
----
-
-## 📞 Contact
-
-- **Project Maintainer:** [Your Name]
-- **Email:** your.email@example.com
-- **GitHub:** [@yourusername](https://github.com/yourusername)
-- **Project Link:** [https://github.com/yourusername/Shameless](https://github.com/yourusername/Shameless)
 
 ---
 
