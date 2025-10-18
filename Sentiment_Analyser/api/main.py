@@ -5,8 +5,7 @@ Provides API endpoints for scraping tweets and analyzing sentiment.
 """
 
 import logging
-from typing import List, Optional
-from pydantic import BaseModel
+from typing import List
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse, FileResponse
@@ -17,10 +16,8 @@ from Sentiment_Analyser.scraper.schemas import Tweet
 from Sentiment_Analyser.scraper.collectors.twitter_collector import TwitterCollector
 from Sentiment_Analyser.scraper.collectors.bluesky_collector import BlueskyCollector
 from Sentiment_Analyser.models import SentimentAnalyzer
-import requests
-import json
-from pathlib import Path
-from fastapi import Response
+from Sentiment_Analyser.storage import UserDatabase
+from Sentiment_Analyser.api.schemas import TweetWithSentiment, SentimentAnalysisResult
 
 # Initialize logger and settings
 logger = logging.getLogger(__name__)
@@ -65,58 +62,11 @@ app = FastAPI(
 # Mount the frontend static files (adjust path relative to this file)
 app.mount("/static", StaticFiles(directory="./frontend"), name="static")
 
-
-# --- Simple JSON-backed storage for external API results ---
-STORE_PATH = Path(settings.PROCESSED_DATA_DIR) / "users.json"
-
-
-def read_store() -> dict:
-    try:
-        if not STORE_PATH.exists():
-            return {}
-        with STORE_PATH.open("r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as e:
-        logger.warning(f"Failed to read store {STORE_PATH}: {e}")
-        return {}
+# Initialize User Database
+user_db = UserDatabase()
 
 
-def write_store(data: dict):
-    try:
-        STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with STORE_PATH.open("w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        logger.error(f"Failed to write store {STORE_PATH}: {e}")
-
-
-# --- Response Models ---
-
-class TweetWithSentiment(BaseModel):
-    """Tweet/Post with sentiment analysis results."""
-    id: str
-    text: str
-    author: str
-    created_at: str
-    url: str
-    sentiment: str
-    confidence: float
-    label: str
-
-
-class SentimentAnalysisResult(BaseModel):
-    """Complete sentiment analysis result with summary."""
-    user_name: str
-    user_handle: str
-    user_avatar: Optional[str]
-    posts: List[TweetWithSentiment]
-    total_analyzed: int
-    positive_count: int
-    negative_count: int
-    average_confidence: float
-    most_positive: TweetWithSentiment
-    most_negative: TweetWithSentiment
-
+# --- Root Endpoint ---
 
 @app.get("/")
 def read_root():
@@ -189,102 +139,43 @@ def scrape_bluesky_user(
     Scrape recent posts from a specific Bluesky user's timeline.
     """
     if not bluesky_collector:
+        logger.error("❌ Bluesky collector not initialized - credentials missing")
         raise HTTPException(status_code=503, detail="Bluesky integration is not configured on the server.")
 
-    logger.info(f"API call: Scrape Bluesky user='{handle}' with limit={limit}")
+    logger.info(f"📥 API endpoint called: GET /api/bluesky/user/{handle} (limit={limit})")
+    
     try:
+        logger.info(f"🔄 Starting post collection from Bluesky for user: {handle}")
         posts_iterator = bluesky_collector.get_user_posts(handle=handle, limit=limit)
         posts = list(posts_iterator)
+        
+        logger.info(f"📊 Collection result: {len(posts)} posts retrieved")
+        
         if not posts:
+            logger.warning(f"⚠️ No posts found for user '{handle}' - returning 404")
             raise HTTPException(status_code=404, detail=f"User '{handle}' not found or has no public posts.")
+        
+        logger.info(f"✅ Successfully returning {len(posts)} posts for user: {handle}")
         return posts
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error scraping Bluesky user '{handle}': {e}")
+        logger.error(f"❌ Unexpected error scraping Bluesky user '{handle}': {type(e).__name__}: {e}")
+        import traceback
+        logger.debug(f"   Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
 
 
 
-@app.get("/api/external/user/{handle}")
-def proxy_external_user(handle: str, response: Response):
+@app.get("/api/users")
+def get_saved_users():
     """
-    Proxy to an external REST API that returns the complete sentiment analysis
-    for a given handle. The external JSON is stored in
-    Sentiment_Analyser/data/processed/users.json under the key `{handle}`.
+    Get list of all saved analyzed users from database.
+    Returns the last 10 analyzed users in reverse chronological order.
     """
-    if not settings.EXTERNAL_API_URL:
-        # If external API URL isn't configured, fall back to using the Bluesky collector
-        # so clients can call this endpoint and still get content. Persist the result
-        # into the same JSON store for consistency.
-        if bluesky_collector:
-            try:
-                logger.info(f"EXTERNAL_API_URL not set; using Bluesky collector fallback for {handle}")
-                posts = list(bluesky_collector.get_user_posts(handle=handle, limit=25))
-                posts_serialized = []
-                for p in posts:
-                    try:
-                        if hasattr(p, 'to_dict'):
-                            posts_serialized.append(p.to_dict())
-                        else:
-                            # best-effort serialization
-                            posts_serialized.append(json.loads(json.dumps(p, default=str)))
-                    except Exception:
-                        posts_serialized.append(str(p))
-
-                payload = {
-                    "handle": handle,
-                    "name": handle,
-                    "avatar": None,
-                    "posts": posts_serialized,
-                }
-
-                # Persist in JSON store under the handle key
-                store = read_store()
-                store[handle] = payload
-                write_store(store)
-
-                response.headers["Content-Type"] = "application/json; charset=utf-8"
-                return JSONResponse(content=payload)
-            except Exception as e:
-                logger.error(f"Bluesky fallback failed for {handle}: {e}")
-                raise HTTPException(status_code=500, detail=f"Bluesky fallback failed: {e}")
-
-        raise HTTPException(status_code=500, detail="EXTERNAL_API_URL is not configured in settings.")
-
-    # Build URL - allow the external API to accept either /user/{handle} or /{handle}
-    base = settings.EXTERNAL_API_URL.rstrip("/")
-    # First try common pattern: /user/{handle}
-    candidates = [f"{base}/user/{handle}", f"{base}/{handle}", f"{base}?handle={handle}"]
-
-    headers = {}
-    if settings.EXTERNAL_API_KEY:
-        headers["Authorization"] = f"Bearer {settings.EXTERNAL_API_KEY}"
-
-    last_err = None
-    for url in candidates:
-        try:
-            logger.info(f"Proxying external request to {url}")
-            r = requests.get(url, headers=headers, timeout=settings.EXTERNAL_API_TIMEOUT)
-            if r.status_code == 200:
-                payload = r.json()
-
-                # Persist in JSON store under the handle key
-                store = read_store()
-                store[handle] = payload
-                write_store(store)
-
-                # Return the payload as-is to the frontend
-                response.headers["Content-Type"] = "application/json; charset=utf-8"
-                return JSONResponse(content=payload)
-            else:
-                last_err = f"Status {r.status_code} from {url}"
-                logger.warning(last_err)
-        except requests.RequestException as e:
-            last_err = str(e)
-            logger.warning(f"Request to {url} failed: {e}")
-
-    # If we reach here, all candidates failed
-    logger.error(f"All external proxy attempts failed for handle={handle}: {last_err}")
-    raise HTTPException(status_code=502, detail=f"Failed to fetch external data for '{handle}': {last_err}")
+    users = user_db.read_all()
+    return JSONResponse(content=users)
 
 
 # --- Sentiment Analysis Endpoints ---
@@ -352,15 +243,18 @@ def analyze_bluesky_user_sentiment(
     Returns posts with sentiment analysis, including most positive and most negative posts.
     """
     if not bluesky_collector:
+        logger.error("❌ Bluesky collector not initialized - credentials missing")
         raise HTTPException(status_code=503, detail="Bluesky integration is not configured on the server.")
     
     if not sentiment_analyzer:
+        logger.error("❌ Sentiment analyzer not initialized - model not loaded")
         raise HTTPException(status_code=503, detail="Sentiment analysis model is not available.")
     
-    logger.info(f"API call: Analyze Bluesky user='{handle}' sentiment with limit={limit}")
+    logger.info(f"🎯 API endpoint called: POST /api/analyze/bluesky/user/{handle} (limit={limit})")
     
     try:
         # Get user profile information
+        logger.info(f"👤 Fetching profile information for: {handle}")
         try:
             from atproto import models
             profile_params = models.AppBskyActorGetProfile.Params(actor=handle)
@@ -368,26 +262,33 @@ def analyze_bluesky_user_sentiment(
             user_name = profile.display_name or profile.handle
             user_handle = profile.handle
             user_avatar = profile.avatar if hasattr(profile, 'avatar') else None
+            logger.info(f"✅ Profile found: {user_name} (@{user_handle})")
         except Exception as e:
-            logger.warning(f"Could not fetch user profile: {e}")
+            logger.warning(f"⚠️ Could not fetch user profile for '{handle}': {type(e).__name__}: {e}")
+            logger.info("💡 Continuing with handle as fallback name")
             user_name = handle
             user_handle = handle
             user_avatar = None
         
         # Scrape posts
+        logger.info(f"📥 Starting to collect posts for '{handle}' (limit: {limit})")
         posts_iterator = bluesky_collector.get_user_posts(handle=handle, limit=limit)
         posts = list(posts_iterator)
         
+        logger.info(f"📦 Post collection completed: {len(posts)} posts retrieved")
+        
         if not posts:
+            logger.warning(f"⚠️ No posts found for user '{handle}' - returning 404")
             raise HTTPException(status_code=404, detail=f"User '{handle}' not found or has no public posts.")
         
         # Analyze sentiment for each post
+        logger.info(f"🤖 Starting sentiment analysis for {len(posts)} posts...")
         analyzed_posts = []
         positive_count = 0
         negative_count = 0
         total_confidence = 0
         
-        for post in posts:
+        for idx, post in enumerate(posts, 1):
             # Use 'content' attribute from Tweet schema
             result = sentiment_analyzer.analyze(post.content)
             
@@ -410,6 +311,11 @@ def analyze_bluesky_user_sentiment(
                 negative_count += 1
             
             total_confidence += analyzed_post.confidence
+            
+            if idx % 5 == 0:
+                logger.debug(f"   Analyzed {idx}/{len(posts)} posts...")
+        
+        logger.info(f"✅ Sentiment analysis completed: {positive_count} positive, {negative_count} negative")
         
         # Find most positive and most negative
         positive_posts = [p for p in analyzed_posts if p.sentiment == 'positive']
@@ -420,6 +326,8 @@ def analyze_bluesky_user_sentiment(
         
         # Calculate average confidence
         avg_confidence = total_confidence / len(analyzed_posts) if analyzed_posts else 0.0
+        
+        logger.info(f"📊 Creating analysis result summary (avg confidence: {avg_confidence:.2%})")
         
         result = SentimentAnalysisResult(
             user_name=user_name,
@@ -434,11 +342,18 @@ def analyze_bluesky_user_sentiment(
             most_negative=most_negative
         )
         
-        logger.info(f"Successfully analyzed {len(analyzed_posts)} posts from {handle}")
+        # Save to database
+        logger.info(f"💾 Saving analysis to database for user: {handle}")
+        user_db.save_analysis(result.dict())
+        logger.info(f"✅ Analysis saved successfully")
+        
+        logger.info(f"🎉 Analysis complete for '{handle}': {len(analyzed_posts)} posts, {positive_count}+ / {negative_count}-")
         return result
         
     except HTTPException as http_exc:
         raise http_exc
     except Exception as e:
-        logger.error(f"Error analyzing Bluesky user '{handle}': {e}")
+        logger.error(f"❌ Unexpected error analyzing Bluesky user '{handle}': {type(e).__name__}: {e}")
+        import traceback
+        logger.debug(f"   Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")

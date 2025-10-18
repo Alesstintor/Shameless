@@ -1,32 +1,3 @@
-// Mock data: replace these variables with real API responses when available
-const MOCK_USERS = [
-  // each item: { avatar, username, name, emotions: {joy:.., sadness:.., anger:.., fear:.., surprise:..}, tweets: [], words: [], summary: '' }
-  {
-    avatar: 'https://pbs.twimg.com/profile_images/141508325/joe_400x400.jpg',
-    username: 'user_one',
-    name: 'User One',
-    emotions: { Joy: 0.45, Sadness: 0.2, Anger: 0.15, Fear: 0.1, Surprise: 0.1 },
-    tweets: ['Tweet ejemplo A', 'Tweet ejemplo B'],
-    words: ['ejemplo', 'prueba', 'shameless'],
-    summary: 'Tendente a compartir opiniones personales y contenido multimedia.'
-  },
-  // repeat mock items to simulate up to 10
-];
-
-// fill up to 10 mock users if needed
-while (MOCK_USERS.length < 10) {
-  const i = MOCK_USERS.length + 1;
-  MOCK_USERS.push({
-    avatar: `https://i.pravatar.cc/150?img=${i}`,
-    username: `ejemplo_${i}`,
-    name: `Ejemplo ${i}`,
-    emotions: { Joy: Math.random(), Sadness: Math.random(), Anger: Math.random(), Fear: Math.random(), Surprise: Math.random() },
-    tweets: [`Ultimo tweet ${i}`, `Otro tweet ${i}`],
-    words: ['palabra1', 'palabra2'],
-    summary: 'Usuario activo con mezcla de contenido.'
-  });
-}
-
 // normalize emotion distributions to sum to 1
 function normalizeEmotions(e) {
   const keys = Object.keys(e);
@@ -163,24 +134,53 @@ detail.addEventListener('click', (e) => { if (e.target === detail) closeDetail()
 title.addEventListener('mouseover', () => title.style.letterSpacing = '2px');
 title.addEventListener('mouseout', () => title.style.letterSpacing = '0.6px');
 
-// Initialize
-let USERS = MOCK_USERS.slice().reverse(); // most recent first (fallback)
+// Initialize - empty users list
+let USERS = [];
 
-// Try to load stored users from server. If the server or endpoint is unavailable,
-// we fall back to the MOCK_USERS defined above.
+// Load stored users from database
 async function loadStoredUsers() {
   try {
-    const res = await fetch('/api/stored_users');
+    const res = await fetch('/api/users');
     if (!res.ok) throw new Error('Server returned ' + res.status);
     const data = await res.json();
+    
     if (Array.isArray(data) && data.length) {
-      // Expecting data entries to match the structure used in the frontend
-      USERS = data.slice(0, 10);
+      // Map database format to UI format
+      USERS = data.map(user => mapAnalysisToUI(user));
+      console.log(`✅ Loaded ${USERS.length} saved analyses from database`);
+    } else {
+      console.log('ℹ️ No saved analyses found. Search for a user to start!');
     }
   } catch (e) {
-    console.warn('Could not load stored users from server, using mock data:', e);
+    console.error('Could not load saved users from server:', e);
   }
   renderGrid(USERS);
+}
+
+// Map analysis result from database to UI format
+function mapAnalysisToUI(analysis) {
+  const totalPosts = analysis.total_analyzed || 1;
+  const positiveRatio = (analysis.positive_count || 0) / totalPosts;
+  const negativeRatio = (analysis.negative_count || 0) / totalPosts;
+  const neutralRatio = 1 - positiveRatio - negativeRatio;
+  
+  const emotions = {
+    Joy: positiveRatio * 0.6,
+    Surprise: positiveRatio * 0.4,
+    Sadness: negativeRatio * 0.5,
+    Anger: negativeRatio * 0.3,
+    Fear: negativeRatio * 0.2 + neutralRatio
+  };
+  
+  return {
+    avatar: analysis.user_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(analysis.user_handle)}`,
+    username: analysis.user_handle || 'unknown',
+    name: analysis.user_name || analysis.user_handle || 'Unknown',
+    emotions: emotions,
+    tweets: (analysis.posts || []).map(p => p.text || p.content || '').slice(0, 10),
+    words: extractTopWords(analysis.posts || []),
+    summary: generateSummary(analysis)
+  };
 }
 
 loadStoredUsers();
@@ -199,37 +199,14 @@ searchForm.addEventListener('submit', async (e) => {
   
   try {
     // Use sentiment analysis endpoint
-    const res = await fetch(`/api/analyze/bluesky/user/${encodeURIComponent(handle)}?limit=10`);
+    const res = await fetch(`/api/analyze/bluesky/user/${encodeURIComponent(handle)}?limit=25`);
     if (!res.ok) throw new Error('Server returned ' + res.status);
-    const data = await res.json();
+    const analysis = await res.json();
 
-    // Map sentiment analysis result to UI structure
-    // Calculate emotion distribution from sentiment analysis
-    const totalPosts = data.total_analyzed || 1;
-    const positiveRatio = (data.positive_count || 0) / totalPosts;
-    const negativeRatio = (data.negative_count || 0) / totalPosts;
-    const neutralRatio = 1 - positiveRatio - negativeRatio;
-    
-    // Map to emotion categories (adjust as needed)
-    const emotions = {
-      Joy: positiveRatio * 0.6,          // Most positive → Joy
-      Surprise: positiveRatio * 0.4,     // Some positive → Surprise
-      Sadness: negativeRatio * 0.5,      // Most negative → Sadness
-      Anger: negativeRatio * 0.3,        // Some negative → Anger
-      Fear: negativeRatio * 0.2 + neutralRatio  // Remaining negative + neutral
-    };
-    
-    const mapped = {
-      avatar: data.user_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(handle)}`,
-      username: data.user_handle || handle,
-      name: data.user_name || handle,
-      emotions: emotions,
-      tweets: (data.posts || []).map(p => p.text || p.content || '').slice(0, 10),
-      words: extractTopWords(data.posts || []),
-      summary: generateSummary(data)
-    };
+    // Map to UI format using shared function
+    const mapped = mapAnalysisToUI(analysis);
 
-    // update local list and re-render
+    // Update local list and re-render
     USERS.unshift(mapped);
     USERS = USERS.slice(0, 10);
     renderGrid(USERS);
