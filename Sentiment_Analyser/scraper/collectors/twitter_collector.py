@@ -16,28 +16,7 @@ from Sentiment_Analyser.config import get_settings
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class Tweet:
-    """Data class representing a scraped tweet. Kept consistent for downstream compatibility."""
-    
-    id: str
-    content: str
-    user: str
-    username: str
-    date: datetime
-    likes: int
-    retweets: int
-    replies: int
-    url: str
-    hashtags: List[str]
-    mentions: List[str]
-    language: Optional[str] = None
-    
-    def to_dict(self) -> dict:
-        """Convert tweet to dictionary."""
-        data = asdict(self)
-        data['date'] = self.date.isoformat()
-        return data
+from .schemas import Tweet
 
 
 class TwitterCollector:

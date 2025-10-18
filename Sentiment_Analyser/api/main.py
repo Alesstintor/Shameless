@@ -12,15 +12,29 @@ from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from Sentiment_Analyser.config import get_settings
-from Sentiment_Analyser.scraper.collectors.twitter_collector import TwitterCollector, Tweet
+from Sentiment_Analyser.scraper.schemas import Tweet
+from Sentiment_Analyser.scraper.collectors.twitter_collector import TwitterCollector
+from Sentiment_Analyser.scraper.collectors.bluesky_collector import BlueskyCollector
 
 # Initialize logger and settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# Create a single, shared instance of the TwitterCollector
-# This is more efficient than creating a new one for each request
-collector = TwitterCollector()
+# --- Initialize Collectors ---
+
+# Initialize Twitter Collector
+try:
+    twitter_collector = TwitterCollector()
+except ValueError:
+    twitter_collector = None
+    logger.warning("Twitter credentials not set. The /api/twitter/ endpoints will be disabled.")
+
+# Initialize Bluesky Collector
+try:
+    bluesky_collector = BlueskyCollector()
+except ValueError:
+    bluesky_collector = None
+    logger.warning("Bluesky credentials not set. The /api/bluesky/ endpoint will be disabled.")
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -48,38 +62,41 @@ def read_root():
         }
 
 
-@app.get("/api/scrape/query", response_model=List[Tweet])
-def scrape_by_query(
+@app.get("/api/twitter/search", response_model=List[Tweet])
+def scrape_twitter_query(
     q: str = Query(..., description="The search query string."),
-    limit: int = Query(100, ge=1, le=1000, description="Number of tweets to return."),
-    since: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)."),
-    until: Optional[str] = Query(None, description="End date (YYYY-MM-DD)."),
+    limit: int = Query(25, ge=10, le=100, description="Number of tweets to return (10-100)."),
 ):
     """
-    Scrape tweets based on a search query.
+    Scrape recent tweets from Twitter based on a search query (last 7 days).
     """
-    logger.info(f"API call: Scrape by query='{q}' with limit={limit}")
+    if not twitter_collector:
+        raise HTTPException(status_code=503, detail="Twitter integration is not configured on the server.")
+    
+    logger.info(f"API call: Scrape Twitter query='{q}' with limit={limit}")
     try:
-        # Note: 'since' and 'until' are ignored by the current tweepy implementation
-        tweets_iterator = collector.search(query=q, limit=limit)
+        tweets_iterator = twitter_collector.search(query=q, limit=limit)
         tweets = list(tweets_iterator)
         return tweets
     except Exception as e:
-        logger.error(f"Error scraping query '{q}': {e}")
+        logger.error(f"Error scraping Twitter query '{q}': {e}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
 
 
-@app.get("/api/scrape/user/{username}", response_model=List[Tweet])
-def scrape_by_user(
+@app.get("/api/twitter/user/{username}", response_model=List[Tweet])
+def scrape_twitter_user(
     username: str,
-    limit: int = Query(100, ge=1, le=1000, description="Number of tweets to return."),
+    limit: int = Query(25, ge=5, le=100, description="Number of tweets to return (5-100)."),
 ):
     """
-    Scrape tweets from a specific user's timeline.
+    Scrape recent tweets from a specific Twitter user's timeline.
     """
-    logger.info(f"API call: Scrape user='{username}' with limit={limit}")
+    if not twitter_collector:
+        raise HTTPException(status_code=503, detail="Twitter integration is not configured on the server.")
+
+    logger.info(f"API call: Scrape Twitter user='{username}' with limit={limit}")
     try:
-        tweets_iterator = collector.get_user_tweets(username=username, limit=limit)
+        tweets_iterator = twitter_collector.get_user_tweets(username=username, limit=limit)
         tweets = list(tweets_iterator)
         if not tweets:
             raise HTTPException(status_code=404, detail=f"User '{username}' not found or has no public tweets.")
@@ -88,6 +105,32 @@ def scrape_by_user(
         # Re-raise HTTPException to avoid catching it as a generic exception
         raise http_exc
     except Exception as e:
-        logger.error(f"Error scraping user '{username}': {e}")
+        logger.error(f"Error scraping Twitter user '{username}': {e}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+
+
+# --- Bluesky Endpoints ---
+
+@app.get("/api/bluesky/user/{handle}", response_model=List[Tweet])
+def scrape_bluesky_user(
+    handle: str,
+    limit: int = Query(25, ge=1, le=100, description="Number of posts to return (1-100)."),
+):
+    """
+    Scrape recent posts from a specific Bluesky user's timeline.
+    """
+    if not bluesky_collector:
+        raise HTTPException(status_code=503, detail="Bluesky integration is not configured on the server.")
+
+    logger.info(f"API call: Scrape Bluesky user='{handle}' with limit={limit}")
+    try:
+        posts_iterator = bluesky_collector.get_user_posts(handle=handle, limit=limit)
+        posts = list(posts_iterator)
+        if not posts:
+            raise HTTPException(status_code=404, detail=f"User '{handle}' not found or has no public posts.")
+        return posts
+    except Exception as e:
+        logger.error(f"Error scraping Bluesky user '{handle}': {e}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+
 
