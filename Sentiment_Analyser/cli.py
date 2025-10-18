@@ -30,14 +30,16 @@ def main():
 
 
 @main.command()
-@click.option("--query", "-q", required=True, help="Search query")
-@click.option("--limit", "-l", default=100, help="Maximum number of tweets to collect")
-@click.option("--since", "-s", help="Start date (YYYY-MM-DD)")
-@click.option("--until", "-u", help="End date (YYYY-MM-DD)")
-@click.option("--output", "-o", help="Output file path", type=click.Path())
+@click.option("--query", "-q", help="Search query for tweets.")
+@click.option("--user", "-U", help="Twitter user account to scrape tweets from.")
+@click.option("--limit", "-l", default=100, help="Maximum number of tweets to collect.")
+@click.option("--since", "-s", help="Start date (YYYY-MM-DD). Only for --query.")
+@click.option("--until", "-u", help="End date (YYYY-MM-DD). Only for --query.")
+@click.option("--output", "-o", help="Output file path.", type=click.Path())
 @click.option("--format", "-f", type=click.Choice(["json", "csv", "parquet"]), default="json")
 def scrape(
-    query: str,
+    query: Optional[str],
+    user: Optional[str],
     limit: int,
     since: Optional[str],
     until: Optional[str],
@@ -45,45 +47,71 @@ def scrape(
     format: str,
 ):
     """
-    Scrape tweets from Twitter/X.
-    
-    Example:
+    Scrape tweets from Twitter/X by query or from a specific user.
+
+    Examples:
         shameless scrape -q "python" -l 100 -o tweets.json
+        shameless scrape -U "elonmusk" -l 50 -o elon_tweets.json
     """
+    # Validate inputs
+    if not query and not user:
+        console.print("[bold red]❌ Error:[/bold red] Please provide either a [cyan]--query[/cyan] or a [cyan]--user[/cyan].")
+        return
+    if query and user:
+        console.print("[bold red]❌ Error:[/bold red] Options [cyan]--query[/cyan] and [cyan]--user[/cyan] are mutually exclusive.")
+        return
+
     settings = get_settings()
-    
-    console.print(f"[bold blue]🐦 Scraping tweets for:[/bold blue] {query}")
-    console.print(f"[dim]Limit: {limit} | Since: {since or 'N/A'} | Until: {until or 'N/A'}[/dim]\n")
-    
-    # Initialize collector
     collector = TwitterCollector(rate_limit=settings.SCRAPER_RATE_LIMIT)
     storage = DataStorage(settings.RAW_DATA_DIR)
     
+    iterator = None
+    task_description = ""
+    
+    if query:
+        console.print(f"[bold blue]🐦 Scraping tweets for query:[/bold blue] {query}")
+        console.print(f"[dim]Limit: {limit} | Since: {since or 'N/A'} | Until: {until or 'N/A'}[/dim]\n")
+        iterator = collector.search(query=query, limit=limit, since=since, until=until)
+        task_description = f"Collecting tweets for '{query}'..."
+    
+    elif user:
+        if since or until:
+            console.print("[bold yellow]⚠️ Warning:[/bold yellow] --since and --until are ignored when scraping by user.\n")
+        console.print(f"[bold blue]🐦 Scraping tweets from user:[/bold blue] @{user}")
+        console.print(f"[dim]Limit: {limit}[/dim]\n")
+        iterator = collector.get_user_tweets(username=user, limit=limit)
+        task_description = f"Collecting tweets from @{user}..."
+
     tweets = []
-    
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
-        task = progress.add_task("Collecting tweets...", total=limit)
-        
-        try:
-            for tweet in collector.search(query=query, limit=limit, since=since, until=until):
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task(description=task_description, total=limit)
+            for i, tweet in enumerate(iterator):
                 tweets.append(tweet.to_dict())
-                progress.update(task, advance=1, description=f"Collected {len(tweets)} tweets...")
-                
-        except Exception as e:
-            console.print(f"[bold red]❌ Error:[/bold red] {e}")
-            return
-    
+                progress.update(task, advance=1, description=f"Collected {i + 1} tweets...")
+    except Exception as e:
+        console.print(f"[bold red]❌ An unexpected error occurred during scraping:[/bold red] {e}")
+        return
+
+    if not tweets:
+        console.print("[yellow]No tweets were collected.[/yellow]")
+        return
+
     # Save data
     if output:
         filename = output
     else:
-        safe_query = query.replace(" ", "_")[:30]
-        filename = f"{safe_query}_{len(tweets)}.{format}"
-    
+        safe_name = ""
+        if query:
+            safe_name = query.replace(" ", "_")[:30]
+        elif user:
+            safe_name = f"user_{user}"
+        filename = f"{safe_name}_{len(tweets)}.{format}"
+
     try:
         if format == "json":
             filepath = storage.save_json(tweets, filename)
@@ -91,9 +119,7 @@ def scrape(
             filepath = storage.save_csv(tweets, filename)
         else:  # parquet
             filepath = storage.save_parquet(tweets, filename)
-            
         console.print(f"\n[bold green]✅ Saved {len(tweets)} tweets to:[/bold green] {filepath}")
-        
     except Exception as e:
         console.print(f"[bold red]❌ Error saving data:[/bold red] {e}")
 
