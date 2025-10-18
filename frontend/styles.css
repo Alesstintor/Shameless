@@ -66,11 +66,79 @@ body.light .theme-bulb:not(.on) svg{fill: var(--muted)}
 .legend-area{flex:1;padding:6px}
 .legend-item{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .legend-swatch{width:18px;height:18px;border-radius:4px}
-.detail-extras{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.list-plain{list-style:none;padding:0;margin:0}
-.words{display:flex;flex-wrap:wrap;gap:8px}
-.word{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:8px;font-weight:600}
+.detail-extras{
+  margin-top:18px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  max-height:400px;
+  overflow-y:auto;
+  padding-right:8px;
+}
+
+.detail-extras::-webkit-scrollbar{width:8px}
+.detail-extras::-webkit-scrollbar-track{background:rgba(255,255,255,0.02);border-radius:4px}
+.detail-extras::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:4px}
+.detail-extras::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.15)}
+
+.detail-extras section{
+  padding:14px;
+  background:rgba(255,255,255,0.02);
+  border-radius:8px;
+}
+
+.detail-extras section h3{
+  margin:0 0 10px 0;
+  font-size:1.1rem;
+  font-weight:600;
+}
+
+.highlight-post{
+  border-left:4px solid transparent;
+}
+
+.positive-post{
+  border-left-color:#4ade80;
+}
+
+.negative-post{
+  border-left-color:#f43f5e;
+}
+
+.post-highlight .post-text{
+  margin:0;
+  line-height:1.6;
+  color:#e6eef6;
+}
+
+.post-highlight .post-meta{
+  margin-top:8px;
+  font-size:0.85rem;
+  color:var(--muted);
+  font-weight:600;
+}
 .summary{margin:8px 0;color:var(--muted)}
+
+/* Light theme adjustments for detail extras */
+body.light .detail-extras section{
+  background:rgba(0,0,0,0.02);
+}
+
+body.light .detail-extras::-webkit-scrollbar-track{
+  background:rgba(0,0,0,0.02);
+}
+
+body.light .detail-extras::-webkit-scrollbar-thumb{
+  background:rgba(0,0,0,0.1);
+}
+
+body.light .detail-extras::-webkit-scrollbar-thumb:hover{
+  background:rgba(0,0,0,0.15);
+}
+
+body.light .post-highlight .post-text{
+  color:#0b1220;
+}
 
 /* small screens */
 @media (max-width:1100px){

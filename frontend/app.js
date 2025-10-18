@@ -1,12 +1,3 @@
-// normalize emotion distributions to sum to 1
-function normalizeEmotions(e) {
-  const keys = Object.keys(e);
-  const sum = keys.reduce((s, k) => s + e[k], 0) || 1;
-  const out = {};
-  for (const k of keys) out[k] = e[k] / sum;
-  return out;
-}
-
 // Render users grid
 const grid = document.getElementById('users-grid');
 const title = document.getElementById('project-title');
@@ -61,10 +52,10 @@ const closeBtn = document.getElementById('close-detail');
 const detailAvatar = document.getElementById('detail-avatar');
 const detailName = document.getElementById('detail-name');
 const detailUsername = document.getElementById('detail-username');
-const detailTweets = document.getElementById('detail-tweets');
-const detailWords = document.getElementById('detail-words');
 const detailSummary = document.getElementById('detail-summary');
 const legendArea = document.getElementById('chart-legend');
+const mostPositivePost = document.getElementById('most-positive-post');
+const mostNegativePost = document.getElementById('most-negative-post');
 
 let currentChart = null;
 
@@ -73,46 +64,97 @@ function openDetail(idx) {
   detailAvatar.src = user.avatar;
   detailName.textContent = user.name;
   detailUsername.textContent = '@' + user.username;
-  detailTweets.innerHTML = '';
-  user.tweets.forEach(t => {
-    const li = document.createElement('li');
-    li.textContent = t;
-    detailTweets.appendChild(li);
-  });
-  detailWords.innerHTML = '';
-  user.words.forEach(w => {
-    const s = document.createElement('span');
-    s.className = 'word';
-    s.textContent = w;
-    detailWords.appendChild(s);
-  });
   detailSummary.textContent = user.summary;
+  
+  // Show most positive post
+  if (user.most_positive) {
+    const posText = mostPositivePost.querySelector('.post-text');
+    const posMeta = mostPositivePost.querySelector('.post-confidence');
+    posText.textContent = user.most_positive.text || user.most_positive;
+    if (typeof user.most_positive === 'object' && user.most_positive.confidence) {
+      posMeta.textContent = `Confianza: ${(user.most_positive.confidence * 100).toFixed(1)}%`;
+    } else {
+      posMeta.textContent = '';
+    }
+  } else {
+    const posText = mostPositivePost.querySelector('.post-text');
+    posText.textContent = 'No disponible';
+    mostPositivePost.querySelector('.post-confidence').textContent = '';
+  }
+  
+  // Show most negative post
+  if (user.most_negative) {
+    const negText = mostNegativePost.querySelector('.post-text');
+    const negMeta = mostNegativePost.querySelector('.post-confidence');
+    negText.textContent = user.most_negative.text || user.most_negative;
+    if (typeof user.most_negative === 'object' && user.most_negative.confidence) {
+      negMeta.textContent = `Confianza: ${(user.most_negative.confidence * 100).toFixed(1)}%`;
+    } else {
+      negMeta.textContent = '';
+    }
+  } else {
+    const negText = mostNegativePost.querySelector('.post-text');
+    negText.textContent = 'No disponible';
+    mostNegativePost.querySelector('.post-confidence').textContent = '';
+  }
 
-  // chart
+  // chart - mostrar solo sentimientos reales
   const ctx = document.getElementById('emotion-chart').getContext('2d');
-  const emo = normalizeEmotions(user.emotions);
-  const labels = Object.keys(emo);
-  const data = labels.map(l => Math.round(emo[l] * 100));
-  const colors = ['#4ade80', '#60a5fa', '#f97316', '#f43f5e', '#a78bfa'];
+  const sentiments = user.sentiments || {};
+  
+  // Filtrar sentimientos con valor > 0 para el gráfico
+  const labels = [];
+  const data = [];
+  const colors = [];
+  
+  const colorMap = {
+    'Positivo': '#4ade80',  // Verde
+    'Negativo': '#f43f5e',  // Rojo
+    'Neutral': '#60a5fa'    // Azul
+  };
+  
+  Object.entries(sentiments).forEach(([label, count]) => {
+    if (count > 0) {
+      labels.push(label);
+      data.push(count);
+      colors.push(colorMap[label] || '#9aa4b2');
+    }
+  });
+  
   if (currentChart) {
     currentChart.destroy();
     legendArea.innerHTML = '';
   }
+  
   currentChart = new Chart(ctx, {
     type: 'doughnut',
-    data: {labels, datasets:[{data, backgroundColor:colors, borderWidth:0}]},
-    options: {plugins:{legend:{display:false}}, cutout: '40%'}
+    data: {
+      labels, 
+      datasets: [{
+        data, 
+        backgroundColor: colors, 
+        borderWidth: 0
+      }]
+    },
+    options: {
+      plugins: {
+        legend: {display: false}
+      }, 
+      cutout: '40%'
+    }
   });
 
-  // legend
+  // legend - mostrar cantidad de posts
   labels.forEach((lab, i) => {
     const it = document.createElement('div');
     it.className = 'legend-item';
     const sw = document.createElement('div');
     sw.className = 'legend-swatch';
-    sw.style.background = colors[i % colors.length];
+    sw.style.background = colors[i];
     const txt = document.createElement('div');
-    txt.textContent = `${lab} — ${data[i]}%`;
+    const total = data.reduce((a, b) => a + b, 0);
+    const percentage = Math.round((data[i] / total) * 100);
+    txt.textContent = `${lab} — ${data[i]} posts (${percentage}%)`;
     it.appendChild(sw);
     it.appendChild(txt);
     legendArea.appendChild(it);
@@ -160,26 +202,25 @@ async function loadStoredUsers() {
 // Map analysis result from database to UI format
 function mapAnalysisToUI(analysis) {
   const totalPosts = analysis.total_analyzed || 1;
-  const positiveRatio = (analysis.positive_count || 0) / totalPosts;
-  const negativeRatio = (analysis.negative_count || 0) / totalPosts;
-  const neutralRatio = 1 - positiveRatio - negativeRatio;
+  const positiveCount = analysis.positive_count || 0;
+  const negativeCount = analysis.negative_count || 0;
+  const neutralCount = totalPosts - positiveCount - negativeCount;
   
-  const emotions = {
-    Joy: positiveRatio * 0.6,
-    Surprise: positiveRatio * 0.4,
-    Sadness: negativeRatio * 0.5,
-    Anger: negativeRatio * 0.3,
-    Fear: negativeRatio * 0.2 + neutralRatio
+  // Sentimientos reales del análisis
+  const sentiments = {
+    Positivo: positiveCount,
+    Negativo: negativeCount,
+    Neutral: neutralCount
   };
   
   return {
     avatar: analysis.user_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(analysis.user_handle)}`,
     username: analysis.user_handle || 'unknown',
     name: analysis.user_name || analysis.user_handle || 'Unknown',
-    emotions: emotions,
-    tweets: (analysis.posts || []).map(p => p.text || p.content || '').slice(0, 10),
-    words: extractTopWords(analysis.posts || []),
-    summary: generateSummary(analysis)
+    sentiments: sentiments,
+    summary: generateSummary(analysis),
+    most_positive: analysis.most_positive || null,
+    most_negative: analysis.most_negative || null
   };
 }
 
@@ -221,27 +262,6 @@ searchForm.addEventListener('submit', async (e) => {
     searchInput.value = '';
   }
 });
-
-// Helper function to extract top words from posts
-function extractTopWords(posts) {
-  const words = {};
-  posts.forEach(post => {
-    const text = post.text || post.content || '';
-    const tokens = text.toLowerCase()
-      .replace(/[^\w\s]/g, ' ')
-      .split(/\s+/)
-      .filter(w => w.length > 3); // words longer than 3 chars
-    
-    tokens.forEach(word => {
-      words[word] = (words[word] || 0) + 1;
-    });
-  });
-  
-  return Object.entries(words)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([word]) => word);
-}
 
 // Helper function to generate summary from sentiment data
 function generateSummary(data) {
