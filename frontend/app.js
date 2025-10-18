@@ -98,7 +98,7 @@ const legendArea = document.getElementById('chart-legend');
 let currentChart = null;
 
 function openDetail(idx) {
-  const user = MOCK_USERS[idx];
+  const user = USERS[idx];
   detailAvatar.src = user.avatar;
   detailName.textContent = user.name;
   detailUsername.textContent = '@' + user.username;
@@ -192,22 +192,37 @@ searchForm.addEventListener('submit', async (e) => {
   if (!q) return;
 
   const handle = q.replace(/^@/, '');
-  // call backend to fetch and store external analysis
+  // call backend to fetch via Bluesky endpoint (server side will proxy or use external API)
   try {
-    const res = await fetch(`/api/external/fetch/${encodeURIComponent(handle)}`);
+    const res = await fetch(`/api/bluesky/user/${encodeURIComponent(handle)}?limit=10`);
     if (!res.ok) throw new Error('Server returned ' + res.status);
     const data = await res.json();
 
-    // The external JSON may not match our UI shape exactly. Attempt to map common fields.
-    const mapped = {
-      avatar: data.avatar || data.profile_image_url || `https://i.pravatar.cc/150?u=${encodeURIComponent(handle)}`,
-      username: data.handle || handle,
-      name: data.name || data.display_name || handle,
-      emotions: data.emotions || data.sentiment_distribution || { Joy: 0.5, Sadness: 0.2, Anger: 0.1, Fear: 0.1, Surprise: 0.1 },
-      tweets: data.tweets || data.posts || [],
-      words: data.words || data.top_words || [],
-      summary: data.summary || data.description || ''
-    };
+    // If the Bluesky endpoint returns a list of posts (array), map it to our UI structure
+    let mapped;
+    if (Array.isArray(data)) {
+      const posts = data;
+      mapped = {
+        avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(handle)}`,
+        username: handle,
+        name: (posts.length && (posts[0].user || posts[0].username)) || handle,
+        emotions: { Joy: 0.5, Sadness: 0.2, Anger: 0.1, Fear: 0.1, Surprise: 0.1 },
+        tweets: posts.map(p => p.content || p.text || String(p)),
+        words: [],
+        summary: ''
+      };
+    } else {
+      // Fallback mapping for object-shaped payloads
+      mapped = {
+        avatar: data.avatar || data.profile_image_url || `https://i.pravatar.cc/150?u=${encodeURIComponent(handle)}`,
+        username: data.handle || handle,
+        name: data.name || data.display_name || handle,
+        emotions: data.emotions || data.sentiment_distribution || { Joy: 0.5, Sadness: 0.2, Anger: 0.1, Fear: 0.1, Surprise: 0.1 },
+        tweets: data.tweets || data.posts || [],
+        words: data.words || data.top_words || [],
+        summary: data.summary || data.description || ''
+      };
+    }
 
     // update local list and re-render
     USERS.unshift(mapped);

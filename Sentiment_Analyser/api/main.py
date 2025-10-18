@@ -212,6 +212,42 @@ def proxy_external_user(handle: str, response: Response):
     Sentiment_Analyser/data/processed/users.json under the key `{handle}`.
     """
     if not settings.EXTERNAL_API_URL:
+        # If external API URL isn't configured, fall back to using the Bluesky collector
+        # so clients can call this endpoint and still get content. Persist the result
+        # into the same JSON store for consistency.
+        if bluesky_collector:
+            try:
+                logger.info(f"EXTERNAL_API_URL not set; using Bluesky collector fallback for {handle}")
+                posts = list(bluesky_collector.get_user_posts(handle=handle, limit=25))
+                posts_serialized = []
+                for p in posts:
+                    try:
+                        if hasattr(p, 'to_dict'):
+                            posts_serialized.append(p.to_dict())
+                        else:
+                            # best-effort serialization
+                            posts_serialized.append(json.loads(json.dumps(p, default=str)))
+                    except Exception:
+                        posts_serialized.append(str(p))
+
+                payload = {
+                    "handle": handle,
+                    "name": handle,
+                    "avatar": None,
+                    "posts": posts_serialized,
+                }
+
+                # Persist in JSON store under the handle key
+                store = read_store()
+                store[handle] = payload
+                write_store(store)
+
+                response.headers["Content-Type"] = "application/json; charset=utf-8"
+                return JSONResponse(content=payload)
+            except Exception as e:
+                logger.error(f"Bluesky fallback failed for {handle}: {e}")
+                raise HTTPException(status_code=500, detail=f"Bluesky fallback failed: {e}")
+
         raise HTTPException(status_code=500, detail="EXTERNAL_API_URL is not configured in settings.")
 
     # Build URL - allow the external API to accept either /user/{handle} or /{handle}
