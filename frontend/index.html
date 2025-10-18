@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Shameless</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+    <!-- Chart.js from CDN for the doughnut chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <main class="wrap">
+      <header class="header">
+        <div class="title-row">
+          <h1 id="project-title">Shameless</h1>
+        </div>
+        <p class="subtitle">Últimos 10 usuarios buscados</p>
+
+        <div class="controls">
+          <form id="search-form" class="search-form" action="#" onsubmit="return false;">
+            <input id="search-input" placeholder="Buscar usuario (ej: elonmusk)" aria-label="Buscar usuario" />
+            <button id="search-btn" type="submit">Buscar</button>
+          </form>
+        </div>
+        <!-- theme bulb in the top-right -->
+        <button id="theme-toggle" class="theme-bulb" aria-pressed="false" aria-label="Alternar modo"></button>
+      </header>
+
+      <section id="users-grid" class="grid" aria-label="Últimos usuarios"></section>
+
+      <!-- Detail modal / panel -->
+      <div id="detail" class="detail hidden" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="detail-inner">
+          <button id="close-detail" class="close">✕</button>
+          <div class="detail-header">
+            <img id="detail-avatar" class="detail-avatar" src="" alt="Avatar" />
+            <div>
+              <h2 id="detail-name"></h2>
+              <div class="detail-username" id="detail-username"></div>
+            </div>
+          </div>
+
+          <div class="detail-body">
+            <div class="chart-area">
+              <canvas id="emotion-chart" width="300" height="300"></canvas>
+            </div>
+            <div class="legend-area" id="chart-legend"></div>
+          </div>
+
+          <div class="detail-extras">
+            <section>
+              <h3>Tweets citados</h3>
+              <ul id="detail-tweets" class="list-plain"></ul>
+            </section>
+            <section>
+              <h3>Palabras</h3>
+              <div id="detail-words" class="words"></div>
+            </section>
+            <section>
+              <h3>Resumen</h3>
+              <p id="detail-summary" class="summary"></p>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+    <footer class="site-footer">Made with &lt;3 for Hacktoberfest 2025</footer>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

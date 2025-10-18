@@ -8,7 +8,8 @@ import logging
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from Sentiment_Analyser.config import get_settings
 from Sentiment_Analyser.scraper.collectors.twitter_collector import TwitterCollector, Tweet
@@ -28,14 +29,23 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# Mount the frontend static files (adjust path relative to this file)
+app.mount("/static", StaticFiles(directory="./frontend"), name="static")
+
+
+
 
 @app.get("/")
 def read_root():
-    """Root endpoint providing basic information about the API."""
-    return {
-        "message": "Welcome to the Shameless Sentiment Analyser API",
-        "documentation": "/docs",
-    }
+    """Serve the frontend index.html if available, otherwise return API root info."""
+    index_path = "./frontend/index.html"
+    try:
+        return FileResponse(index_path)
+    except Exception:
+        return {
+            "message": "Welcome to the Shameless Sentiment Analyser API",
+            "documentation": "/docs",
+        }
 
 
 @app.get("/api/scrape/query", response_model=List[Tweet])
