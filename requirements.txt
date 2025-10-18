@@ -1,51 +1,26 @@
 # Core dependencies
-python-dotenv==1.0.0
 pydantic==2.5.0
 pydantic-settings==2.1.0
 
-# Data processing
+# Data processing (minimal)
 pandas==2.1.4
 numpy==1.26.2
 
 # Web scraping
 snscrape==0.7.0.20230622
 
-# Machine Learning
-scikit-learn==1.3.2
+# Machine Learning - Inference only
 transformers==4.36.2
 torch==2.1.2
 tokenizers==0.15.0
 
-# NLP
-nltk==3.8.1
-
-# API
+# API (for future REST endpoints)
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
-python-multipart==0.0.6
 
-# Database
-sqlalchemy==2.0.25
-alembic==1.13.1
-
-# Caching
-redis==5.0.1
-
-# Monitoring & Logging
-prometheus-client==0.19.0
-
-# Utilities
+# CLI
 click==8.1.7
-tqdm==4.66.1
-python-dateutil==2.8.2
+rich==13.7.0
 
-# Data storage
-pyarrow==14.0.2
-
-# Jupyter
-jupyter==1.0.0
-ipykernel==6.28.0
-notebook==7.0.6
-matplotlib==3.8.2
-seaborn==0.13.1
-plotly==5.18.0
+# Optional: Kaggle API for model download
+# kaggle==1.6.6

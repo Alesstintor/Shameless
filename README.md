@@ -87,13 +87,12 @@ Shameless analiza el perfil completo de un usuario en Twitter/X y genera un repo
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Tech Stack:**
+**Tech Stack (Local - Inference Only):**
 - **Language:** Python 3.9+
-- **Scraping:** snscrape
-- **ML/NLP:** transformers, scikit-learn, NLTK
+- **ML/NLP:** transformers, torch
 - **Data:** pandas, numpy
-- **Visualization:** matplotlib, seaborn, plotly
-- **Notebooks:** Jupyter
+- **Config:** pydantic, python-dotenv
+- **Training:** Kaggle (GPU + Jupyter notebooks)
 
 ---
 
