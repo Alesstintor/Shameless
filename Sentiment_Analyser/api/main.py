@@ -10,8 +10,8 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 
-from sentiment_analyser.config import get_settings
-from sentiment_analyser.scraper import TwitterCollector, Tweet
+from Sentiment_Analyser.config import get_settings
+from Sentiment_Analyser.scraper.collectors.twitter_collector import TwitterCollector, Tweet
 
 # Initialize logger and settings
 logger = logging.getLogger(__name__)
