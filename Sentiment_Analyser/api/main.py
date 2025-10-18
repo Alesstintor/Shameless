@@ -64,6 +64,9 @@ def scrape_by_query(
         tweets_iterator = collector.search(query=q, limit=limit)
         tweets = list(tweets_iterator)
         return tweets
+    except Exception as e:
+        logger.error(f"Error scraping query '{q}': {e}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
 
 
 @app.get("/api/scrape/user/{username}", response_model=List[Tweet])
