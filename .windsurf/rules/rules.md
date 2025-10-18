@@ -1,5 +1,6 @@
 ---
 trigger: model_decision
+description: When making a code change
 ---
 
 # Shameless - Development Rules & Guidelines

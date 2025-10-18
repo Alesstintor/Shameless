@@ -1,5 +1,6 @@
 ---
 trigger: model_decision
+description: When model needs to understand the project context
 ---
 
 # Shameless - Project Context

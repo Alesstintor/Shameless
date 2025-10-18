@@ -1,5 +1,6 @@
 ---
 trigger: model_decision
+description: When model needs to read the project architecture
 ---
 
 # Shameless - User Sentiment Analysis Architecture
