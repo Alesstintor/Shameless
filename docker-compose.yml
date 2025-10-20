@@ -1,78 +1,54 @@
+# Docker Compose simplificado - Solo API (Frontend + Backend)
 version: '3.8'
 
 services:
-  sentiment-analyser:
+  api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: shameless-sentiment-analyser
+    container_name: shameless-api
+    restart: unless-stopped
+    
     environment:
+      # Configuración básica
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - API_DEBUG=${API_DEBUG:-false}
+      
+      # Modelo ML
+      - MODEL_NAME=${MODEL_NAME:-distilbert-base-uncased-finetuned-sst-2-english}
+      - MODEL_VERSION=${MODEL_VERSION:-v1.0}
       - MODEL_DEVICE=${MODEL_DEVICE:-cpu}
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/sentiment_db
-      - REDIS_URL=redis://redis:6379/0
+      - MODEL_BATCH_SIZE=${MODEL_BATCH_SIZE:-32}
+      
+      # Base de datos SQLite (incluida en el contenedor, sin servicio externo)
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./sentiment_analyser.db}
+      
+      # Credenciales Bluesky (REQUERIDO)
+      - BLUESKY_HANDLE=${BLUESKY_HANDLE}
+      - BLUESKY_PASSWORD=${BLUESKY_PASSWORD}
+      
+      # Twitter/X (opcional)
+      - TWITTER_API_KEY=${TWITTER_API_KEY:-}
+      - TWITTER_API_KEY_SECRET=${TWITTER_API_KEY_SECRET:-}
+      - TWITTER_ACCESS_TOKEN=${TWITTER_ACCESS_TOKEN:-}
+      - TWITTER_ACCESS_TOKEN_SECRET=${TWITTER_ACCESS_TOKEN_SECRET:-}
+      
+      # DeepSeek API (para análisis de personalidad)
+      - DEEPSEEK_API_TOKEN=${DEEPSEEK_API_TOKEN}
+      
+      # Seguridad
+      - SECRET_KEY=${SECRET_KEY:-change-this-in-production}
+    
     volumes:
+      # Solo persistir datos y logs (NO el código para evitar conflictos)
       - ./Sentiment_Analyser/data:/app/Sentiment_Analyser/data
-      - ./logs:/app/logs
+    
     ports:
-      - "8000:8000"
-    depends_on:
-      - db
-      - redis
-    restart: unless-stopped
-    networks:
-      - sentiment-network
-
-  db:
-    image: postgres:15-alpine
-    container_name: shameless-postgres
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=sentiment_db
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    restart: unless-stopped
-    networks:
-      - sentiment-network
-
-  redis:
-    image: redis:7-alpine
-    container_name: shameless-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    networks:
-      - sentiment-network
-
-  jupyter:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: shameless-jupyter
-    command: jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root
-    environment:
-      - JUPYTER_ENABLE_LAB=yes
-    volumes:
-      - ./Sentiment_Analyser:/app/Sentiment_Analyser
-      - ./logs:/app/logs
-    ports:
-      - "8888:8888"
-    depends_on:
-      - db
-      - redis
-    restart: unless-stopped
-    networks:
-      - sentiment-network
-
-volumes:
-  postgres_data:
-  redis_data:
-
-networks:
-  sentiment-network:
-    driver: bridge
+      - "${API_PORT:-8000}:8000"
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
