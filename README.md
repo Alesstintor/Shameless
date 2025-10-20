@@ -180,6 +180,12 @@ ls Sentiment_Analyser/data/models/v1.0/
 # Should show: model/ tokenizer/ config.json metrics.json
 ```
 
+**⚠️ IMPORTANTE: Configurar permisos del modelo**
+```bash
+# Otorgar permisos de lectura al modelo
+chmod -R 755 Sentiment_Analyser/data/models/v1.0/
+```
+
 > **Note:** The folder name should match your `MODEL_VERSION` setting in `.env`
 
 #### 3. Configure Bluesky Credentials (Optional)
@@ -328,6 +334,15 @@ LOG_LEVEL=INFO
 ```
 
 ### Troubleshooting
+
+**Error: "Permission denied" al cargar el modelo**
+
+Si recibes errores de permisos al intentar cargar el modelo, asegúrate de configurar los permisos correctamente:
+
+```bash
+# Otorgar permisos de lectura/escritura al directorio del modelo
+chmod -R 755 Sentiment_Analyser/data/models/v1.0/
+```
 
 **Error: "Model not found at data/models/v1.0/model"**
 
