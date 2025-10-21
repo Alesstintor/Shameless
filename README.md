@@ -40,6 +40,7 @@ Shameless analiza el perfil completo de un usuario en **Bluesky** (y Twitter/X) 
 ## ✨ Features
 
 ### 🎯 Core Functionality
+
 - **🦋 Bluesky Support**: Analiza usuarios de Bluesky con autenticación nativa
 - **User Analysis**: Proporciona handle → Obtén perfil de sentimiento completo
 - **Smart Scraping**: Recolecta automáticamente posts (usando atproto SDK oficial)
@@ -48,6 +49,7 @@ Shameless analiza el perfil completo de un usuario en **Bluesky** (y Twitter/X) 
 - **REST API**: FastAPI con documentación interactiva (Swagger UI)
 
 ### 📊 Analysis Capabilities
+
 - **Overall Sentiment**: ¿Es el usuario positivo, negativo o neutral?
 - **Temporal Analysis**: Evolución del sentimiento a lo largo del tiempo
 - **Topic Analysis**: ¿Sobre qué temas es más positivo/negativo?
@@ -55,6 +57,7 @@ Shameless analiza el perfil completo de un usuario en **Bluesky** (y Twitter/X) 
 - **Insights**: Descubre patrones y tendencias automáticamente
 
 ### 🤖 Machine Learning
+
 - **🎯 Pre-trained Model Ready**: DistilBERT fine-tuned on 25k samples (87% accuracy)
 - **📦 One-Command Download**: Disponible en [Kaggle Models](https://www.kaggle.com/models/aleselmaquinas/shameless-sentiment-analyzer)
 - **⚡ Kaggle Training**: GPU-accelerated training with T4/P100 (100% gratuito)
@@ -64,6 +67,7 @@ Shameless analiza el perfil completo de un usuario en **Bluesky** (y Twitter/X) 
 - **💾 Compact Size**: ~270 MB (DistilBERT base + fine-tuning)
 
 ### 🎨 User Experience
+
 - **CLI Interface**: Interfaz de línea de comandos intuitiva
 - **Web UI** (Coming soon): Interface web con Streamlit
 - **PDF Reports**: Reportes profesionales exportables
@@ -76,32 +80,33 @@ Shameless analiza el perfil completo de un usuario en **Bluesky** (y Twitter/X) 
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                    Data Collection Layer                      │
-│  Bluesky (atproto) → Posts → Storage (JSON)                 │
+│                    Data Collection Layer                                                                                                                        │
+│  Bluesky (atproto) → Posts → Storage (JSON)                                                                                                    │
 └───────────────────────┬──────────────────────────────────────┘
                         │
                         ▼
 ┌──────────────────────────────────────────────────────────────┐
-│                   Preprocessing Layer                         │
-│   Text Cleaning → Normalization → Tokenization              │
+│                   Preprocessing Layer                                                                                                                            │
+│   Text Cleaning → Normalization → Tokenization                                                                                               │
 └───────────────────────┬──────────────────────────────────────┘
                         │
                         ▼
 ┌──────────────────────────────────────────────────────────────┐
-│                 Machine Learning Layer                        │
-│  DistilBERT (Kaggle) → Sentiment Classification → Results   │
-│  Model: v1.0 (~270 MB) | Accuracy: 87% | Inference: ~100ms  │
+│                 Machine Learning Layer                                                                                                                       │
+│  DistilBERT (Kaggle) → Sentiment Classification → Results                                                                             │
+│  Model: v1.0 (~270 MB) | Accuracy: 87% | Inference: ~100ms                                                                           │
 └───────────────────────┬──────────────────────────────────────┘
                         │
                         ▼
 ┌──────────────────────────────────────────────────────────────┐
-│                      API Layer (FastAPI)                      │
-│  REST Endpoints → JSON Responses → Interactive Docs         │
-│  /api/analyze/bluesky/user/{handle}                         │
+│                      API Layer (FastAPI)                                                                                                                         │
+│  REST Endpoints → JSON Responses → Interactive Docs                                                                                 │
+│  /api/analyze/bluesky/user/{handle}                                                                                                                      │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 **Tech Stack:**
+
 - **Language:** Python 3.11+
 - **API Framework:** FastAPI + Uvicorn
 - **ML/NLP:** transformers, torch, DistilBERT
@@ -116,6 +121,7 @@ Shameless analiza el perfil completo de un usuario en **Bluesky** (y Twitter/X) 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Python 3.11 or higher
 - pip
 - Kaggle account (free)
@@ -150,6 +156,7 @@ pip install kaggle  # For downloading the model
 **Option B: Using Kaggle CLI**
 
 First, configure Kaggle CLI (one-time setup):
+
 1. Go to https://www.kaggle.com/settings/account
 2. Click **"Create New Token"** under API section
 3. Download `kaggle.json`
@@ -158,6 +165,7 @@ First, configure Kaggle CLI (one-time setup):
    - **Linux/Mac**: `~/.kaggle/kaggle.json` (then run `chmod 600 ~/.kaggle/kaggle.json`)
 
 Then download the model:
+
 ```bash
 # Navigate to models directory
 cd Sentiment_Analyser/data/models
@@ -174,6 +182,7 @@ cd ../../..
 ```
 
 **Verify the installation:**
+
 ```bash
 # Check structure (replace v1.0 with your MODEL_VERSION)
 ls Sentiment_Analyser/data/models/v1.0/
@@ -181,6 +190,7 @@ ls Sentiment_Analyser/data/models/v1.0/
 ```
 
 **⚠️ IMPORTANTE: Configurar permisos del modelo**
+
 ```bash
 # Otorgar permisos de lectura al modelo
 chmod -R 755 Sentiment_Analyser/data/models/v1.0/
@@ -224,7 +234,7 @@ from Sentiment_Analyser.models import SentimentAnalyzer
 
 # Load Kaggle-trained model (version configured in .env)
 analyzer = SentimentAnalyzer(
-    use_kaggle_model=True, 
+    use_kaggle_model=True,
     kaggle_model_version="v1.0"  # Or set MODEL_VERSION in .env
 )
 
@@ -239,18 +249,19 @@ for text, result in zip(texts, results):
     print(f"{text}: {result['sentiment']} ({result['confidence']:.2%})")
 ```
 
-<<<<<<< Updated upstream
 > **Note:** To use Kaggle models, first train them in Kaggle and download locally.
 > See [KAGGLE_WORKFLOW.md](KAGGLE_WORKFLOW.md) for complete instructions.
-=======
+
 ### 🎯 API Endpoints
 
 **Analyze Bluesky User:**
+
 ```bash
 GET /api/analyze/bluesky/user/{handle}?limit=10
 ```
 
 **Response:**
+
 ```json
 {
   "user_name": "Jay Graber",
@@ -265,7 +276,6 @@ GET /api/analyze/bluesky/user/{handle}?limit=10
   "posts": [...]
 }
 ```
->>>>>>> Stashed changes
 
 ---
 
@@ -347,6 +357,7 @@ chmod -R 755 Sentiment_Analyser/data/models/v1.0/
 **Error: "Model not found at data/models/v1.0/model"**
 
 The model files are missing. Download them:
+
 1. Go to: https://www.kaggle.com/models/aleselmaquinas/shameless-sentiment-analyzer
 2. Click **"Download"** button (you'll need a Kaggle account)
 3. Extract the downloaded archive
@@ -355,6 +366,7 @@ The model files are missing. Download them:
    - If `MODEL_VERSION=v2.0`, copy to: `Sentiment_Analyser/data/models/v2.0`
 
 Expected structure (for v1.0):
+
 ```
 Sentiment_Analyser/data/models/v1.0/
 ├── model/
@@ -372,6 +384,7 @@ Sentiment_Analyser/data/models/v1.0/
 > **Tip:** Always ensure the folder name matches the `MODEL_VERSION` variable in your `.env` file
 
 **Error: "Bluesky integration is not configured"**
+
 - Add your credentials to `.env`:
   ```
   BLUESKY_HANDLE=your-handle.bsky.social
@@ -380,6 +393,7 @@ Sentiment_Analyser/data/models/v1.0/
 - Get App Password: Bluesky Settings → Privacy and Security → App Passwords
 
 **Slow inference on CPU?**
+
 - Use GPU if available: Set `MODEL_DEVICE=cuda` in `.env`
 - Install CUDA-enabled PyTorch:
   ```bash
@@ -389,6 +403,7 @@ Sentiment_Analyser/data/models/v1.0/
 **How to upgrade to a new model version?**
 
 When a new model version is released (e.g., v2.0):
+
 1. Download the new version from Kaggle Models
 2. Extract to: `Sentiment_Analyser/data/models/v2.0`
 3. Update your `.env`:
@@ -466,6 +481,7 @@ jupyter notebook Sentiment_Analyser/notebooks/sentiment_analysis.ipynb
 ```
 
 The notebook includes:
+
 - ✅ Complete data collection workflow
 - ✅ Preprocessing examples
 - ✅ Sentiment analysis
@@ -527,9 +543,9 @@ Shameless/
 
 Comprehensive documentation is available in the `.windsurf/` directory:
 
-- **[Architecture Guide](/.windsurf/architecture.md)** - System architecture and design patterns
-- **[Development Rules](/.windsurf/rules.md)** - Coding standards and best practices
-- **[Project Context](/.windsurf/context.md)** - Project goals, use cases, and workflows
+- **[Architecture Guide](/.windsurf/rules/architecture.md)** - System architecture and design patterns
+- **[Development Rules](/.windsurf/rules/rules.md)** - Coding standards and best practices
+- **[Project Context](/.windsurf/rules/context.md)** - Project goals, use cases, and workflows
 
 ### Additional Resources
 
@@ -572,6 +588,7 @@ We welcome contributions! This project is part of **Hacktoberfest 2025**.
 ## 🗺️ Roadmap
 
 ### Phase 1: MVP ✅ (Current)
+
 - [x] Project structure and architecture
 - [x] Twitter scraper with snscrape
 - [x] Basic sentiment analysis (transformers)
@@ -579,6 +596,7 @@ We welcome contributions! This project is part of **Hacktoberfest 2025**.
 - [x] Documentation
 
 ### Phase 2: Core Features 🔄
+
 - [ ] Advanced ML models (fine-tuned BERT)
 - [ ] REST API with FastAPI
 - [ ] Database integration (PostgreSQL)
@@ -586,6 +604,7 @@ We welcome contributions! This project is part of **Hacktoberfest 2025**.
 - [ ] CI/CD pipeline
 
 ### Phase 3: Scale & Polish 📅
+
 - [ ] Real-time processing pipeline
 - [ ] Web dashboard (React)
 - [ ] Model monitoring and retraining
@@ -593,6 +612,7 @@ We welcome contributions! This project is part of **Hacktoberfest 2025**.
 - [ ] Cloud deployment
 
 ### Phase 4: Advanced Features 🚀
+
 - [ ] Entity recognition
 - [ ] Topic modeling
 - [ ] Trend prediction
@@ -605,12 +625,12 @@ We welcome contributions! This project is part of **Hacktoberfest 2025**.
 
 Current benchmarks (on CPU):
 
-| Metric | Value |
-|--------|-------|
-| Scraping Speed | ~60 tweets/min |
-| Inference Time | ~100ms/sample |
-| Batch Processing | ~1000 samples/min |
-| Accuracy | ~87% (SST-2 benchmark) |
+| Metric           | Value                  |
+| ---------------- | ---------------------- |
+| Scraping Speed   | ~60 tweets/min         |
+| Inference Time   | ~100ms/sample          |
+| Batch Processing | ~1000 samples/min      |
+| Accuracy         | ~87% (SST-2 benchmark) |
 
 ---
 
